@@ -1,0 +1,744 @@
+@import url("https://fonts.googleapis.com/css2?family=Lalezar&family=Vazirmatn:wght@400;500;600;700&display=swap");
+
+:root {
+  /* تم قرمز-مشکی-طلایی — پارچه‌های سیاه عزا، پرچم‌های سرخ عاشورا، حاشیه‌ی طلایی */
+  --color-bg: #0a0808;
+  --color-surface: #160f0f;
+  --color-surface-raised: #201414;
+  --color-border: #3d1414;
+  --color-text: #f3ece9;
+  --color-text-muted: #9c8380;
+  --color-crimson: #a01820;
+  --color-crimson-bright: #d92630;
+  --color-gold: #b8892f;
+  --color-gold-bright: #e0b843;
+
+  --font-display: "Lalezar", "Vazirmatn", sans-serif;
+  --font-body: "Vazirmatn", sans-serif;
+
+  --radius: 6px;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  direction: rtl;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-gold-bright);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.eyebrow {
+  display: none;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--color-gold);
+  margin: 0 0 4px;
+}
+
+.page-title {
+  display: none;
+  font-family: var(--font-display);
+  font-size: 30px;
+  color: var(--color-gold-bright);
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  display: none;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-gold);
+  background: transparent;
+  color: var(--color-gold-bright);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--color-gold);
+  color: var(--color-bg);
+}
+
+.btn-primary {
+  background: var(--color-crimson);
+  border-color: var(--color-crimson);
+  color: var(--color-text);
+}
+
+.btn-primary:hover {
+  background: var(--color-crimson-bright);
+  color: var(--color-text);
+}
+
+.btn-danger {
+  border-color: var(--color-crimson-bright);
+  color: var(--color-crimson-bright);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="password"],
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.field textarea {
+  min-height: 220px;
+  line-height: 1.9;
+  resize: vertical;
+}
+
+.field input[type="file"] {
+  width: 100%;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+}
+.announcement-banner {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, var(--color-surface-raised), var(--color-surface));
+  border: 1px solid var(--color-gold);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  text-decoration: none;
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+}
+
+.announcement-banner-image {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+
+.announcement-banner-text {
+  margin: 0;
+  color: var(--color-gold-bright);
+  font-weight: 600;
+  text-align: center;
+}
+
+.announcement-banner-wrap {
+  margin-bottom: 20px;
+}
+
+.announcement-banner-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.announcement-banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--color-gold);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.announcement-banner-dot.active {
+  background: var(--color-gold-bright);
+}
+
+@media (min-width: 900px) {
+  .announcement-banner {
+    max-width: 1100px;
+  }
+
+  .announcement-banner-image {
+    max-height: 440px;
+  }
+}
+.error-text {
+  color: var(--color-crimson-bright);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.top-bar .brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--color-gold-bright);
+}
+
+.top-bar .role-badge {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.script-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.script-list-item {
+  display: block;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.script-list-item:hover {
+  border-color: var(--color-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.script-list-item h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  color: var(--color-text);
+}
+
+.script-list-item .meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--color-text-muted);
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ===================== منوی اصلی ===================== */
+.main-nav {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px 10px;
+  overflow-x: auto;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.main-nav a {
+  flex-shrink: 0;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.main-nav a.active,
+.main-nav a:hover {
+  background: var(--color-crimson);
+  color: var(--color-text);
+}
+/* ===================== نویگیشن پایین صفحه (فقط موبایل) ===================== */
+.bottom-nav {
+  display: none;
+}
+
+/* ===================== بنر مجلس ===================== */
+.script-banner {
+  width: 100%;
+  max-height: 260px;
+  overflow: hidden;
+}
+
+.script-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.banner-preview {
+  display: block;
+  max-width: 220px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  border: 1px solid var(--color-border);
+}
+
+/* ===================== فرم: ردیف دو‌ستونی و راهنما ===================== */
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.field-row .field {
+  flex: 1;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: -6px 0 16px;
+  line-height: 1.7;
+}
+
+/* ===================== جست‌وجوی نقش برای جُنگ ===================== */
+.jong-search-box {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.jong-search-box > label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.jong-search-box input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.jong-search-results {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.jong-search-result {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.jong-search-result strong {
+  color: var(--color-gold-bright);
+}
+
+.jong-search-result .meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.jong-search-result .excerpt {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+/* ===================== ویرایشگر قطعات متن (افزودن متن) ===================== */
+.segments-editor {
+  margin-bottom: 20px;
+}
+
+.segments-editor > label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+}
+
+.segment-block {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.segment-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.segment-role-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-gold-bright);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segment-block-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.btn-icon:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold-bright);
+}
+
+.btn-icon-danger:hover {
+  border-color: var(--color-crimson-bright);
+  color: var(--color-crimson-bright);
+}
+
+.segment-block textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.8;
+  resize: vertical;
+}
+
+/* خط‌چین بین قطعات — فقط در فرم ویرایش، برای نشان‌دادن مرز هر «افزودن متن» */
+.segment-divider {
+  border-top: 1px dashed var(--color-border);
+  margin: 14px 0;
+}
+
+.segments-editor > button {
+  margin-top: 10px;
+}
+
+/* ===================== نمایش نهایی برای مشترک: کادرهای گرد و مجزا ===================== */
+.segments-reader {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.segment-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.segment-box-role {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--color-gold-bright);
+  margin-bottom: 6px;
+}
+
+.segment-box-body {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+/* ===================== واکنش‌گرا برای موبایل ===================== */
+@media (max-width: 560px) {
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+.main-nav {
+    display: none;
+  }
+
+  main.has-bottom-nav {
+    padding-bottom: 64px;
+  }
+
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 20;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px 6px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--color-gold-bright);
+  }
+
+  .main-nav a {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .field-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .segment-block-header {
+    flex-wrap: wrap;
+  }
+
+  .segment-role-input {
+    min-width: 100%;
+    order: 1;
+  }
+
+  .segment-block-actions {
+    order: 2;
+  }
+
+  .jong-search-result {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jong-search-result button {
+    align-self: flex-start;
+  }
+
+  .script-banner {
+    max-height: 160px;
+  }
+
+  .segment-box {
+    padding: 12px 14px;
+  }
+
+  .segment-box-body {
+    font-size: 14px;
+  }
+
+  .admin-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+/* ===================== جست‌وجو و دسته‌بندی آبشاری صفحه اصلی ===================== */
+.category-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  margin-bottom: 18px;
+}
+
+.category-search-input:focus {
+  outline: 2px solid var(--color-gold-bright);
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-box {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.category-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 17px;
+  cursor: pointer;
+  text-align: start;
+}
+
+.category-header:hover {
+  background: var(--color-surface-raised);
+}
+
+.category-count {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+
+.category-chevron {
+  color: var(--color-gold);
+  transition: transform 0.2s ease;
+}
+
+.category-chevron.open {
+  transform: rotate(180deg);
+}
+
+.category-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--color-gold-bright);
+  margin: 0 0 10px;
+}
+
+/* توی پنل مدیریت، آیتم‌های هر دسته به‌جای کارت‌های کنار هم (که برای
+   صفحه‌ی اصلی مناسب بود)، به‌صورت ردیف‌های زیر هم با دکمه‌های
+   ویرایش/حذف نشون داده می‌شن. */
+.category-body-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

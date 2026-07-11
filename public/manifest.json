@@ -1,0 +1,17 @@
+{
+  "name": "کتابخانه نسخ تعزیه",
+  "short_name": "تعزیه",
+  "description": "آرشیو دیجیتال نسخ تعزیه هیئت — متن، صوت و ویدئوی مجالس",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0808",
+  "theme_color": "#0a0808",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
