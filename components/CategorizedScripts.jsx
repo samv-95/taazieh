@@ -17,10 +17,9 @@ export default function CategorizedScripts() {
     })();
   }, []);
 
+  // دسته‌بندی از روی «موضوع مجلس» (topic) است.
   const categories = useMemo(() => {
     if (!scripts) return [];
-
-    // دسته‌بندی از روی «موضوع مجلس» (topic) است، نه نقش.
     const map = new Map();
     scripts.forEach((s) => {
       const key = s.topic?.trim() || "دسته‌بندی‌نشده";
@@ -32,17 +31,21 @@ export default function CategorizedScripts() {
       .sort((a, b) => b.items.length - a.items.length);
   }, [scripts]);
 
+  // جست‌وجو هم روی نام نقش هم روی عنوان انجام می‌شود؛ مثلاً تایپ
+  // «امام» باید نسخه‌ای با role_name = «امام» را پیدا کند، حتی اگر
+  // عنوان کامل آن نسخه شامل کلمه‌ی «امام» نباشد.
   const filteredCategories = useMemo(() => {
     const q = query.trim();
     if (!q) return categories;
     return categories
       .map((cat) => ({
         ...cat,
-        items: cat.items.filter((s) => s.title?.includes(q)),
+        items: cat.items.filter((s) => s.role_name?.includes(q) || s.title?.includes(q)),
       }))
       .filter((cat) => cat.items.length > 0);
   }, [categories, query]);
 
+  // موقع تایپ در جست‌وجو، دسته‌های نتیجه‌دار خودکار باز می‌شوند.
   useEffect(() => {
     if (!query.trim()) return;
     setOpenCategories((prev) => {
@@ -59,12 +62,19 @@ export default function CategorizedScripts() {
 
   if (!scripts) return <p>در حال بارگذاری…</p>;
 
+  // اسم نمایشی هر نسخه: «نقش از موضوع» — اگر یکی از این دو نبود، همان
+  // یکی که هست؛ اگر هیچ‌کدام نبود، عنوان کامل.
+  const displayName = (s) => {
+    if (s.role_name?.trim() && s.topic?.trim()) return `${s.role_name.trim()} از ${s.topic.trim()}`;
+    return s.role_name?.trim() || s.topic?.trim() || s.title;
+  };
+
   return (
     <div className="category-search">
       <input
         type="text"
         className="category-search-input"
-        placeholder="جست‌وجوی نقش، عنوان یا موضوع… مثلاً: عابس"
+        placeholder="جست‌وجوی نقش یا عنوان… مثلاً: امام"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -92,7 +102,7 @@ export default function CategorizedScripts() {
                         style={{ width: "100%", borderRadius: 6, marginBottom: 10, maxHeight: 140, objectFit: "cover" }}
                       />
                     )}
-                    <h3>{s.role_name?.trim() || s.title}</h3>
+                    <h3>{displayName(s)}</h3>
                     <div className="meta">
                       {s.type === "jong" ? "جُنگ" : "مجلس"}
                       {" · "}
