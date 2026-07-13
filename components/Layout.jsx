@@ -38,6 +38,14 @@ function BottomNavIcon({ name }) {
       </svg>
     );
   }
+  if (name === "media") {
+  return (
+    <svg {...common}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M10 9l5 3-5 3z" />
+    </svg>
+  );
+}
   if (name === "download") {
     return (
       <svg {...common}>
