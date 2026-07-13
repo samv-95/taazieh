@@ -20,9 +20,9 @@ function groupByCategory(scripts) {
     map.get(key).push(s);
   });
   return Array.from(map.entries())
-    .map(([name, items]) => ({ name, items }))
-    .sort((a, b) => b.items.length - a.items.length);
-}
+      .map(([name, items]) => ({ name, items }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fa"));
+  }
 
 function CategoryAccordion({ categories, onDelete }) {
   const [open, setOpen] = useState({});
