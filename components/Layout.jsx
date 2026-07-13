@@ -38,16 +38,7 @@ function BottomNavIcon({ name }) {
       </svg>
     );
   }
-  if (name === "text") {
-    return (
-      <svg {...common}>
-        <path d="M6 3h9l3 3v15H6z" />
-        <path d="M15 3v3h3" />
-        <path d="M9 12h6M9 15h6M9 9h3" />
-      </svg>
-    );
-  }
-if (name === "download") {
+  if (name === "download") {
     return (
       <svg {...common}>
         <path d="M12 4v11" />
