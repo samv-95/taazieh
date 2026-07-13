@@ -34,7 +34,7 @@ const TILE_H_MM = 105;
 const TILE_PAD_X_MM = 4; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
 const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، کمی بیشتر از بقیه
 const TILE_PAD_BOTTOM_MM = 4;
-const PRINT_FONT_PT = 11.5;
+const PRINT_FONT_PT = 18;
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
 const LINE_HEIGHT_RATIO = 1.55;
 
@@ -57,7 +57,7 @@ function paginateForPrint(segments) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   const fontSizePx = PRINT_FONT_PT * PT_TO_PX;
-  ctx.font = `${fontSizePx}px ${PRINT_FONT_FAMILY}`;
+  ctx.font = `bold ${fontSizePx}px ${PRINT_FONT_FAMILY}`;
 
   const usableWidthPx = (TILE_W_MM - TILE_PAD_X_MM * 2) * MM_TO_PX;
   const usableHeightPx = (TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM) * MM_TO_PX;
@@ -88,8 +88,8 @@ function paginateForPrint(segments) {
     }
   };
 
-  const pushLine = (text, scale = 1) => {
-    pageBlocks.push({ type: "line", text, scale });
+  const pushLine = (text) => {
+    pageBlocks.push({ type: "line", text });
     lineCount++;
     flushPageIfFull();
   };
@@ -106,7 +106,6 @@ function paginateForPrint(segments) {
     if (idx > 0 && pageBlocks.length > 0) pushDivider();
 
     const paragraphs = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
-    const MIN_SHRINK_SCALE = 0.72;
 
     paragraphs.forEach((para) => {
       const fullWidth = ctx.measureText(para).width;
@@ -116,12 +115,9 @@ function paginateForPrint(segments) {
         return;
       }
 
-      const scale = usableWidthPx / fullWidth;
-      if (scale >= MIN_SHRINK_SCALE) {
-        pushLine(para, scale);
-        return;
-      }
-
+      // اگر یک مصرع/پاراگراف از عرض کارت بلندتر بود، بین چند خط
+      // می‌شکنیمش — نه کوچیک‌کردن فونت، تا اندازه‌ی فونت در کل متن
+      // همیشه یکسان بماند.
       const words = para.split(/\s+/).filter(Boolean);
       let line = "";
       for (const word of words) {
@@ -199,11 +195,7 @@ function BookletCell({ page }) {
           block.type === "divider" ? (
             <hr className="script-card-divider" key={i} />
           ) : (
-            <p
-              className="script-card-line"
-              key={i}
-              style={block.scale && block.scale < 1 ? { fontSize: `${(PRINT_FONT_PT * block.scale).toFixed(2)}pt` } : undefined}
-            >
+            <p className="script-card-line" key={i}>
               {block.text}
             </p>
           )
