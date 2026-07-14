@@ -34,7 +34,11 @@ const TILE_H_MM = 105;
 const TILE_PAD_X_MM = 4; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
 const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، کمی بیشتر از بقیه
 const TILE_PAD_BOTTOM_MM = 4;
+<<<<<<< HEAD
 const PRINT_FONT_PT = 22;
+=======
+const PRINT_FONT_PT = 18;
+>>>>>>> b70f043 (تغییر تنظیمات)
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
 const LINE_HEIGHT_RATIO = 1.55;
 

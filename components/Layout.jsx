@@ -38,7 +38,11 @@ function BottomNavIcon({ name }) {
       </svg>
     );
   }
+<<<<<<< HEAD
   if (name === "media") {
+=======
+if (name === "media") {
+>>>>>>> b70f043 (تغییر تنظیمات)
   return (
     <svg {...common}>
       <rect x="3" y="4" width="18" height="16" rx="2" />
