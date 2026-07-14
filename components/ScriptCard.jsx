@@ -31,7 +31,7 @@ const PAGES_PER_SIGNATURE = 16; // ۸ فرد + ۸ زوج = یک دست برگه 
 // ابعاد داخل هر کارت (میلی‌متر) — باید با styles/print.css هماهنگ بماند
 const TILE_W_MM = 74.25;
 const TILE_H_MM = 105;
-const TILE_PAD_X_MM = 2; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
+const TILE_PAD_X_MM = 1; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
 const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، کمی بیشتر از بقیه
 const TILE_PAD_BOTTOM_MM = 4;
 const PRINT_FONT_PT = 15;
