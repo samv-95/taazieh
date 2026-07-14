@@ -36,7 +36,7 @@ const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، 
 const TILE_PAD_BOTTOM_MM = 4;
 const PRINT_FONT_PT = 15;
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
-const LINE_HEIGHT_RATIO = 1.55;
+const LINE_HEIGHT_RATIO = 1.35;
 
 const MM_TO_PX = 96 / 25.4;
 const PT_TO_PX = 96 / 72;
