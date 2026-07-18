@@ -11,6 +11,7 @@ const displayName = (s) => {
 
 export default function AdminCategorizedScripts() {
   const [scripts, setScripts] = useState(null);
+  const [query, setQuery] = useState("");
 
   const load = async () => {
     const { data } = await supabase
@@ -30,8 +31,15 @@ export default function AdminCategorizedScripts() {
     load();
   };
 
-  const majles = useMemo(() => scripts?.filter((s) => s.type !== "jong") || [], [scripts]);
-  const jong = useMemo(() => scripts?.filter((s) => s.type === "jong") || [], [scripts]);
+  const filtered = useMemo(() => {
+    if (!scripts) return [];
+    const q = query.trim();
+    if (!q) return scripts;
+    return scripts.filter((s) => s.role_name?.includes(q) || s.title?.includes(q));
+  }, [scripts, query]);
+
+  const majles = useMemo(() => filtered.filter((s) => s.type !== "jong"), [filtered]);
+  const jong = useMemo(() => filtered.filter((s) => s.type === "jong"), [filtered]);
 
   const majlesCategories = useMemo(() => groupByTopic(majles), [majles]);
   const jongCategories = useMemo(() => groupByTopic(jong), [jong]);
@@ -66,6 +74,14 @@ export default function AdminCategorizedScripts() {
 
   return (
     <>
+      <input
+        type="text"
+        className="category-search-input"
+        placeholder="جست‌وجوی نقش یا عنوان… مثلاً: امام"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
       <h2 className="section-title">مجلس‌ها ({majles.length})</h2>
       <CategoryAccordion categories={majlesCategories} renderItem={renderItem} />
 

@@ -47,6 +47,8 @@ alter table public.scripts add column if not exists type text not null default '
 alter table public.scripts add column if not exists topic text;
 alter table public.scripts add column if not exists role_name text;
 alter table public.scripts add column if not exists banner_url text;
+-- سایز فونت خروجی کاغذی مخصوص همین نسخه؛ خالی = استفاده از پیش‌فرض (۱۸)
+alter table public.scripts add column if not exists print_font_size_pt numeric;
 do $$ begin
   alter table public.scripts add constraint scripts_type_check check (type in ('majles', 'jong'));
 exception when duplicate_object then null;

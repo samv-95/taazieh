@@ -19,6 +19,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
   const [existingMediaUrl] = useState(initial?.media_url || "");
   const [bannerFile, setBannerFile] = useState(null);
   const [existingBannerUrl] = useState(initial?.banner_url || "");
+  const [printFontSizePt, setPrintFontSizePt] = useState(initial?.print_font_size_pt || "");
 
   // دسته‌بندی‌های (نقش/موضوع) موجود، برای پیشنهاد خودکار موقع تایپ —
   // تا نسخه‌ی جدید دقیقاً به همون دسته‌ی قبلی توی صفحه‌ی اصلی بپیونده.
@@ -160,6 +161,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         media_type: mediaType,
         media_url: mediaType === "none" ? null : mediaUrl,
         banner_url: bannerUrl || null,
+        print_font_size_pt: printFontSizePt ? Number(printFontSizePt) : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -265,6 +267,25 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         اصلی هم نسخه‌ها بر اساس همین «نقش اصلی» دسته‌بندی می‌شن — برای اینکه این نسخه توی دسته‌ی موجودی مثل «عابس»
         قرار بگیره، حین تایپ از لیست پیشنهادی همون اسم قبلی رو انتخاب کنید.
       </p>
+      {type === "majles" && (
+        <div className="field">
+          <label htmlFor="printFontSizePt">سایز فونت خروجی کاغذی این نسخه (اختیاری)</label>
+          <input
+            id="printFontSizePt"
+            type="number"
+            min="8"
+            max="40"
+            step="0.5"
+            value={printFontSizePt}
+            onChange={(e) => setPrintFontSizePt(e.target.value)}
+            placeholder="پیش‌فرض: ۱۸"
+          />
+          <p className="hint">
+            اگه خالی بذارید، از سایز پیش‌فرض (۱۸) استفاده می‌شه. برای متن‌های طولانی‌تر می‌تونید عدد کوچیک‌تر بذارید
+            تا صفحات کمتری لازم بشه.
+          </p>
+        </div>
+      )}
 
       <div className="field">
         <label htmlFor="banner">بنر مجلس (تصویر)</label>

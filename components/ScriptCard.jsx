@@ -36,7 +36,7 @@ const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، 
 const TILE_PAD_BOTTOM_MM = 4;
 const PRINT_FONT_PT = 16;
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
-const LINE_HEIGHT_RATIO = 1.25;
+const LINE_HEIGHT_RATIO = 1.30;
 
 const MM_TO_PX = 96 / 25.4;
 const PT_TO_PX = 96 / 72;
@@ -51,12 +51,12 @@ const PT_TO_PX = 96 / 72;
 // و بعدی، خودکار یک جداکننده گذاشته می‌شود. اگر کسی قبلاً داخل متنش
 // دستی یک خط از خط‌تیره/ـ گذاشته (۳ کاراکتر یا بیشتر پشت‌سرهم) همان‌جا
 // هم به‌طور خودکار به یک جداکننده‌ی چاپی واقعی تبدیل می‌شود.
-function paginateForPrint(segments) {
+function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   if (typeof document === "undefined") return [];
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const fontSizePx = PRINT_FONT_PT * PT_TO_PX;
+  const fontSizePx = fontSizePt * PT_TO_PX;
   ctx.font = `bold ${fontSizePx}px ${PRINT_FONT_FAMILY}`;
 
   const usableWidthPx = (TILE_W_MM - TILE_PAD_X_MM * 2) * MM_TO_PX;
@@ -171,7 +171,7 @@ function buildSignatures(script, contentChunks) {
   return signatures;
 }
 
-function BookletCell({ page }) {
+function BookletCell({ page, fontSizePt }) {
   if (!page) return <div className="script-card script-card-empty" />;
   if (page.type === "cover") {
     const { script } = page;
@@ -190,7 +190,7 @@ function BookletCell({ page }) {
   }
   return (
     <div className="script-card">
-      <div className="script-card-body">
+      <div className="script-card-body" style={{ fontSize: `${fontSizePt}pt` }}>
         {page.blocks.map((block, i) =>
           block.type === "divider" ? (
             <hr className="script-card-divider" key={i} />
@@ -205,19 +205,16 @@ function BookletCell({ page }) {
   );
 }
 
-function BookletFace({ pages, breakAfter }) {
+function BookletFace({ pages, breakAfter, fontSizePt }) {
   const cells = Array.from({ length: 8 }, (_, i) => pages[i] || null);
   return (
     <div
       className="print-sheet print-sheet-booklet"
       dir="rtl"
-      // فقط بین روهای واقعی شکست صفحه می‌گذاریم؛ بعد از آخرین روی
-      // چاپ‌شده هیچ شکستی نمی‌گذاریم تا یک صفحه‌ی خالیِ اضافه در
-      // انتهای پرینت ساخته نشود.
       style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}
     >
       {cells.map((page, i) => (
-        <BookletCell page={page} key={i} />
+        <BookletCell page={page} fontSizePt={fontSizePt} key={i} />
       ))}
     </div>
   );
@@ -226,18 +223,18 @@ function BookletFace({ pages, breakAfter }) {
 // نسخه‌ی مخصوص چاپ «مجلس»: بوکلت افقی ۸تایی با صفحه‌بندی فرد/زوج
 export function PrintBooklet({ script, segments }) {
   const [signatures, setSignatures] = useState(null);
+  const fontSizePt = Number(script?.print_font_size_pt) || PRINT_FONT_PT;
 
   useEffect(() => {
-    const contentChunks = paginateForPrint(segments);
+    const contentChunks = paginateForPrint(segments, fontSizePt);
     setSignatures(buildSignatures(script, contentChunks));
-  }, [script, segments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [script, segments, fontSizePt]);
 
   if (!signatures) return null;
 
   const isFaceEmpty = (facePages) => facePages.every((p) => !p);
 
-  // همه‌ی روهای غیرخالی (رو و پشت هر دست برگه) را یک‌جا جمع می‌کنیم
-  // تا بدانیم کدام‌یک واقعاً «آخرین» روی چاپ‌شونده است.
   const faces = [];
   signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
@@ -249,13 +246,12 @@ export function PrintBooklet({ script, segments }) {
   return (
     <div className="print-only">
       {faces.map((face, i) => (
-        <BookletFace pages={face.pages} breakAfter={i < faces.length - 1} key={face.key} />
+        <BookletFace pages={face.pages} breakAfter={i < faces.length - 1} fontSizePt={fontSizePt} key={face.key} />
       ))}
     </div>
   );
 }
 
-// ============================================================
 // خروجی کاغذی برای «جُنگ» — فعلاً بدون تغییر، فرمت آن جدا مشخص می‌شود.
 // ============================================================
 export function PrintJongDocument({ script, segments }) {

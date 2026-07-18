@@ -85,7 +85,7 @@
 
 .script-card .script-card-body {
   font-size: 13pt;
-  line-height: 1.55;
+  line-height: 1.30;
   overflow: hidden;
 }
 
@@ -99,6 +99,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  font-weight: bold;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 1px currentColor;
+  text-shadow: 0.4px 0 currentColor, -0.4px 0 currentColor, 0 0.4px currentColor, 0 -0.4px currentColor,
+    0.4px 0.4px currentColor, -0.4px -0.4px currentColor, 0.4px -0.4px currentColor, -0.4px 0.4px currentColor;
+  text-align: justify;
+  text-align-last: justify;
+  word-spacing: 1px;
 }
 
 /* جداکننده‌ی خودکار بین قطعات — جایگزین خط‌چینی که قبلاً باید دستی
@@ -118,13 +126,20 @@
 
 .script-card-cover .script-card-title {
   border-bottom: none;
-  font-size: 15pt;
+  font-family: "B Nazanin", Tahoma, "Vazirmatn", sans-serif;
+  font-size: 22pt;
+  font-weight: bold;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 1px currentColor;
 }
 
 .script-card-cover .cover-line {
-  font-family: "Lalezar", sans-serif;
-  font-size: 11pt;
+  font-family: "B Nazanin", Tahoma, "Vazirmatn", sans-serif;
   color: #8c1015;
+  font-size: 16pt;
+  font-weight: bold;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 1px currentColor;
   margin: 4mm 0 0;
 }
 
