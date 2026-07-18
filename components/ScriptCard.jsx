@@ -235,10 +235,17 @@ export function PrintBooklet({ script, segments }) {
 
   const isFaceEmpty = (facePages) => facePages.every((p) => !p);
 
+// همه‌ی روهای غیرخالی (رو و پشت هر دست برگه) را یک‌جا جمع می‌کنیم
+  // تا بدانیم کدام‌یک واقعاً «آخرین» روی چاپ‌شونده است.
   const faces = [];
   signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
-    const evenPages = sig.filter((_, i) => i % 2 === 1);
+    const evenPagesRaw = sig.filter((_, i) => i % 2 === 1);
+    // برای چاپ دورو با «چرخش از لبه‌ی کوتاه» (مناسب صفحات landscape)،
+    // وقتی برگه رو برمی‌گردونید، ردیف بالا و پایین جابه‌جا می‌شن — پس
+    // باید همین جابه‌جایی رو از قبل توی روی پشت اعمال کنیم تا بعد از
+    // چرخش فیزیکی، هر خانه دقیقاً پشت همون خانه‌ی روی جلو بیفتد.
+    const evenPages = [...evenPagesRaw.slice(4, 8), ...evenPagesRaw.slice(0, 4)];
     if (!isFaceEmpty(oddPages)) faces.push({ key: `${sIdx}-odd`, pages: oddPages });
     if (!isFaceEmpty(evenPages)) faces.push({ key: `${sIdx}-even`, pages: evenPages });
   });
