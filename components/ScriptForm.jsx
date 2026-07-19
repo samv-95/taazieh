@@ -20,6 +20,8 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
   const [bannerFile, setBannerFile] = useState(null);
   const [existingBannerUrl] = useState(initial?.banner_url || "");
   const [printFontSizePt, setPrintFontSizePt] = useState(initial?.print_font_size_pt || "");
+  const [printOrientation, setPrintOrientation] = useState(initial?.print_orientation || "landscape");
+  const [printStrokePx, setPrintStrokePx] = useState(initial?.print_stroke_px || "");
 
   // دسته‌بندی‌های (نقش/موضوع) موجود، برای پیشنهاد خودکار موقع تایپ —
   // تا نسخه‌ی جدید دقیقاً به همون دسته‌ی قبلی توی صفحه‌ی اصلی بپیونده.
@@ -162,6 +164,8 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         media_url: mediaType === "none" ? null : mediaUrl,
         banner_url: bannerUrl || null,
         print_font_size_pt: printFontSizePt ? Number(printFontSizePt) : null,
+        print_orientation: printOrientation,
+        print_stroke_px: printStrokePx ? Number(printStrokePx) : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -289,6 +293,54 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
 
       <div className="field">
         <label htmlFor="banner">بنر مجلس (تصویر)</label>
+        {type === "majles" && (
+        <div className="field">
+          <label>جهت خروجی کاغذی این نسخه</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              style={{
+                flex: 1,
+                background: printOrientation === "landscape" ? "var(--color-crimson)" : "transparent",
+                color: printOrientation === "landscape" ? "var(--color-text)" : "var(--color-gold-bright)",
+              }}
+              onClick={() => setPrintOrientation("landscape")}
+            >
+              افقی (Landscape)
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{
+                flex: 1,
+                background: printOrientation === "portrait" ? "var(--color-crimson)" : "transparent",
+                color: printOrientation === "portrait" ? "var(--color-text)" : "var(--color-gold-bright)",
+              }}
+              onClick={() => setPrintOrientation("portrait")}
+            >
+              عمودی (Portrait)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {type === "majles" && (
+        <div className="field">
+          <label htmlFor="printStrokePx">ضخامت استروک متن خروجی کاغذی (اختیاری)</label>
+          <input
+            id="printStrokePx"
+            type="number"
+            min="0"
+            max="4"
+            step="0.1"
+            value={printStrokePx}
+            onChange={(e) => setPrintStrokePx(e.target.value)}
+            placeholder="پیش‌فرض: ۱"
+          />
+          <p className="hint">اگه خالی بذارید، از ضخامت پیش‌فرض (۱ پیکسل) استفاده می‌شه.</p>
+        </div>
+      )}
         {existingBannerUrl && !bannerFile && (
           <img src={existingBannerUrl} alt="بنر فعلی" className="banner-preview" />
         )}
