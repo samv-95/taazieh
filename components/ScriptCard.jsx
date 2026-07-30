@@ -31,25 +31,52 @@ const PRINT_FONT_PT = 16;
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
 const LINE_HEIGHT_RATIO = 1.30;
 
-const USABLE_WIDTH_MM = TILE_W_MM - (TILE_PAD_X_MM * 2);
-const USABLE_HEIGHT_MM = TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM;
-const DIVIDER_HEIGHT_MM = 6.0;
-
-const ptToMm = (pt) => pt * (25.4 / 72);
-const mmToPx = (mm) => mm * (96 / 25.4);
-
 function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   if (typeof document === "undefined") return [];
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  ctx.font = `bold ${fontSizePt}pt ${PRINT_FONT_FAMILY}`;
+  // برای اندازه‌گیری دقیق و ۱۰۰٪ منطبق با واقعیت مرورگر، از یک المان مخفی استفاده می‌کنیم
+  // این روش باعث می‌شود اگر مرورگر یک خط را به خاطر طولانی بودن بشکند (Wrap)، 
+  // ما ارتفاع دو خط را دریافت کنیم و محاسبات صفحه‌بندی هرگز خطا نرود.
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.visibility = "hidden";
+  container.style.top = "-9999px";
+  container.style.width = `${TILE_W_MM - TILE_PAD_X_MM * 2}mm`;
+  container.style.fontSize = `${fontSizePt}pt`;
+  container.style.fontFamily = PRINT_FONT_FAMILY;
+  container.style.lineHeight = LINE_HEIGHT_RATIO;
+  container.style.fontWeight = "bold";
+  container.style.whiteSpace = "pre-wrap";
+  container.style.wordBreak = "break-word";
+  document.body.appendChild(container);
 
-  const fontSizeMm = ptToMm(fontSizePt);
-  const lineHeightMm = fontSizeMm * LINE_HEIGHT_RATIO;
-  
-  // ۴ میلی‌متر بافر اطمینان برای اختلاف محاسبه‌ی بوم (Canvas) با مرورگر
-  const safeWidthPx = mmToPx(USABLE_WIDTH_MM - 4);
+  // تبدیل میلی‌متر به پیکسل دقیق بر اساس رندر مرورگر جاری
+  const measureMmToPx = (mm) => {
+    const el = document.createElement("div");
+    el.style.height = `${mm}mm`;
+    document.body.appendChild(el);
+    const px = el.getBoundingClientRect().height;
+    document.body.removeChild(el);
+    return px;
+  };
+
+  const usableHeightPx = measureMmToPx(TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM);
+  // حاشیه اطمینان ۲ پیکسلی برای جلوگیری از خطای اعشاری مرورگرها
+  const safeHeightPx = usableHeightPx - 2;
+  const dividerHeightPx = measureMmToPx(6.0); // ارتفاع جداکننده
+
+  const measureText = (text, isRole = false) => {
+    if (isRole) {
+      container.style.textAlign = "right";
+      container.style.textAlignLast = "auto";
+    } else {
+      container.style.textAlign = "justify";
+      container.style.textAlignLast = "justify";
+    }
+    // اگر متن خالی باشد، با یک اسپیس نامرئی ارتفاع واقعی یک خط خالی را می‌گیریم
+    container.innerText = text || "\u00A0";
+    return container.getBoundingClientRect().height;
+  };
 
   const chunks = [];
   segments.forEach((seg) => {
@@ -70,33 +97,37 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
   const pages = [];
   let pageBlocks = [];
-  let currentHeightMm = 0;
+  let currentHeightPx = 0;
 
-  const flushPageIfFull = (neededMm) => {
-    // 0.1 میلی‌متر تلورانس خطای اعشاری
-    if (currentHeightMm + neededMm > USABLE_HEIGHT_MM + 0.1 && pageBlocks.length > 0) {
+  const flushPageIfFull = (neededPx) => {
+    if (currentHeightPx + neededPx > safeHeightPx && pageBlocks.length > 0) {
       pages.push(pageBlocks);
       pageBlocks = [];
-      currentHeightMm = 0;
+      currentHeightPx = 0;
     }
   };
 
   const pushLine = (text) => {
-    flushPageIfFull(lineHeightMm);
+    const h = measureText(text, false);
+    flushPageIfFull(h);
     pageBlocks.push({ type: "line", text });
-    currentHeightMm += lineHeightMm;
+    currentHeightPx += h;
   };
 
   const pushRole = (text) => {
-    flushPageIfFull(lineHeightMm);
+    const h = measureText(text, true);
+    flushPageIfFull(h);
     pageBlocks.push({ type: "role", text });
-    currentHeightMm += lineHeightMm;
+    currentHeightPx += h;
   };
 
   const pushDivider = () => {
-    flushPageIfFull(DIVIDER_HEIGHT_MM);
-    pageBlocks.push({ type: "divider" });
-    currentHeightMm += DIVIDER_HEIGHT_MM;
+    flushPageIfFull(dividerHeightPx);
+    // اگر صفحه جدیدی تازه ساخته شده، جداکننده در ابتدای آن نمی‌گذاریم
+    if (pageBlocks.length > 0) {
+      pageBlocks.push({ type: "divider" });
+      currentHeightPx += dividerHeightPx;
+    }
   };
 
   chunks.forEach((chunk, idx) => {
@@ -108,37 +139,15 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
     if (chunk.text) {
       const paragraphs = chunk.text.split(/\n/).map((p) => p.trim());
-
       paragraphs.forEach((para) => {
-        if (!para) {
-          pushLine("");
-          return;
-        }
-
-        const fullWidth = ctx.measureText(para).width;
-
-        if (fullWidth <= safeWidthPx) {
-          pushLine(para);
-          return;
-        }
-
-        const words = para.split(/\s+/).filter(Boolean);
-        let line = "";
-        for (const word of words) {
-          const candidate = line ? `${line} ${word}` : word;
-          if (ctx.measureText(candidate).width > safeWidthPx && line) {
-            pushLine(line);
-            line = word;
-          } else {
-            line = candidate;
-          }
-        }
-        if (line) pushLine(line);
+        pushLine(para);
       });
     }
   });
 
   if (pageBlocks.length) pages.push(pageBlocks);
+
+  document.body.removeChild(container);
 
   return pages.length ? pages : [[]];
 }
@@ -192,16 +201,12 @@ function BookletCell({ page, fontSizePt, rotate }) {
     );
   }
 
-  const fontSizeMm = ptToMm(fontSizePt);
-  const lineHeightMm = fontSizeMm * LINE_HEIGHT_RATIO;
-
   return (
     <div className="script-card" style={rotationStyle}>
       <div 
         className="script-card-body" 
         style={{ 
           fontSize: `${fontSizePt}pt`, 
-          height: `${USABLE_HEIGHT_MM}mm`, 
           overflow: "hidden" 
         }}
       >
@@ -210,7 +215,7 @@ function BookletCell({ page, fontSizePt, rotate }) {
             <div
               key={i}
               style={{
-                height: `${DIVIDER_HEIGHT_MM}mm`,
+                height: "6mm",
                 display: "flex",
                 alignItems: "center",
                 margin: 0
@@ -223,33 +228,30 @@ function BookletCell({ page, fontSizePt, rotate }) {
               className="script-card-role"
               key={i}
               style={{
-                height: `${lineHeightMm}mm`,
-                lineHeight: `${lineHeightMm}mm`,
                 margin: 0,
                 fontWeight: "bold",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                color: "#8c1015"
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                color: "#8c1015",
+                textAlign: "right"
               }}
             >
-              {block.text}
+              {block.text || "\u00A0"}
             </div>
           ) : (
             <p
               className="script-card-line"
               key={i}
               style={{
-                height: `${lineHeightMm}mm`,
-                lineHeight: `${lineHeightMm}mm`,
                 margin: 0,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
                 textAlign: "justify",
                 textAlignLast: "justify",
                 fontWeight: "bold",
               }}
             >
-              {block.text}
+              {block.text || "\u00A0"}
             </p>
           )
         )}
@@ -279,9 +281,14 @@ export function PrintBooklet({ script, segments }) {
   const fontSizePt = Number(script?.print_font_size_pt) || PRINT_FONT_PT;
   const duplexEdge = script?.print_duplex_edge === "long" ? "long" : "short";
 
+  // به جای dependency ساده، فقط زمانی اجرا می‌شود که document در دسترس باشد
   useEffect(() => {
-    const contentChunks = paginateForPrint(segments, fontSizePt);
-    setSignatures(buildSignatures(script, contentChunks));
+    // از timeout برای اطمینان از رندر کامل استایل‌ها و فونت‌ها در مرورگر استفاده می‌کنیم
+    const t = setTimeout(() => {
+      const contentChunks = paginateForPrint(segments, fontSizePt);
+      setSignatures(buildSignatures(script, contentChunks));
+    }, 100);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [script, segments, fontSizePt]);
 
