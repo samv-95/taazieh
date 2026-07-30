@@ -2,7 +2,6 @@ import { Fragment, useEffect, useState } from "react";
 
 // ============================================================
 // نمایش برای مشترک (حالت خوانش داخل اپ)
-// هر قطعه در یک کادر گرد و جدا با پس‌زمینه و رنگ یکپارچه نمایش داده می‌شود.
 // ============================================================
 export default function ScriptCard({ segments }) {
   return (
@@ -18,45 +17,39 @@ export default function ScriptCard({ segments }) {
 }
 
 // ============================================================
-// خروجی کاغذی «بوکلت» برای مجلس: برگه‌ی A4 افقی، ۸ قسمت مساوی
-// (دقیقاً یک‌هشتم A4 هرکدام). صفحه‌ی اول = جلد (نقش + موضوع).
-// صفحات بعدی: متن پیوسته (بدون خط‌چین قطعات)، تقسیم‌شده بر اساس
-// اندازه‌گیری واقعی فونت چاپ (B Nazanin, 13pt) تا هیچ صفحه‌ی
-// اضافه یا خالی به‌صورت الکی ساخته نشود.
-// صفحات فرد روی یک روی برگه و صفحات زوج روی روی دیگر چاپ می‌شوند.
+// خروجی کاغذی «بوکلت»
 // ============================================================
 
-const PAGES_PER_SIGNATURE = 16; // ۸ فرد + ۸ زوج = یک دست برگه (رو و پشت)
+const PAGES_PER_SIGNATURE = 16; 
 
-// ابعاد داخل هر کارت (میلی‌متر) — باید با styles/print.css هماهنگ بماند
 const TILE_W_MM = 74.25;
 const TILE_H_MM = 105;
-const TILE_PAD_X_MM = 4; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
-const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، کمی بیشتر از بقیه
+const TILE_PAD_X_MM = 4; 
+const TILE_PAD_TOP_MM = 8; 
 const TILE_PAD_BOTTOM_MM = 4;
 const PRINT_FONT_PT = 16;
 const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
 const LINE_HEIGHT_RATIO = 1.30;
 
-const MM_TO_PX = 96 / 25.4;
-const PT_TO_PX = 96 / 72;
+const USABLE_WIDTH_MM = TILE_W_MM - (TILE_PAD_X_MM * 2);
+const USABLE_HEIGHT_MM = TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM;
+const DIVIDER_HEIGHT_MM = 6.0;
+
+const ptToMm = (pt) => pt * (25.4 / 72);
+const mmToPx = (mm) => mm * (96 / 25.4);
 
 function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   if (typeof document === "undefined") return [];
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const fontSizePx = fontSizePt * PT_TO_PX;
-  ctx.font = `bold ${fontSizePx}px ${PRINT_FONT_FAMILY}`;
+  ctx.font = `bold ${fontSizePt}pt ${PRINT_FONT_FAMILY}`;
 
-  const usableWidthPx = (TILE_W_MM - TILE_PAD_X_MM * 2) * MM_TO_PX;
-  const usableHeightPx = (TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM) * MM_TO_PX;
-  const lineHeightPx = fontSizePx * LINE_HEIGHT_RATIO;
+  const fontSizeMm = ptToMm(fontSizePt);
+  const lineHeightMm = fontSizeMm * LINE_HEIGHT_RATIO;
   
-  // بافر اطمینان: برای اینکه مطمئن باشیم هیچ وقت متن از کادر بيرون نمی‌زند
-  // عرض را 15 پیکسل و ارتفاع را به اندازه 1 خط کمتر از فضای واقعی فرض می‌کنیم
-  const safeWidthPx = usableWidthPx - 15;
-  const linesPerTile = Math.max(1, Math.floor(usableHeightPx / lineHeightPx) - 1);
+  // ۴ میلی‌متر بافر اطمینان برای اختلاف محاسبه‌ی بوم (Canvas) با مرورگر
+  const safeWidthPx = mmToPx(USABLE_WIDTH_MM - 4);
 
   const chunks = [];
   segments.forEach((seg) => {
@@ -77,32 +70,33 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
   const pages = [];
   let pageBlocks = [];
-  let lineCount = 0;
+  let currentHeightMm = 0;
 
-  const flushPageIfFull = () => {
-    if (lineCount >= linesPerTile) {
+  const flushPageIfFull = (neededMm) => {
+    // 0.1 میلی‌متر تلورانس خطای اعشاری
+    if (currentHeightMm + neededMm > USABLE_HEIGHT_MM + 0.1 && pageBlocks.length > 0) {
       pages.push(pageBlocks);
       pageBlocks = [];
-      lineCount = 0;
+      currentHeightMm = 0;
     }
   };
 
   const pushLine = (text) => {
+    flushPageIfFull(lineHeightMm);
     pageBlocks.push({ type: "line", text });
-    lineCount++;
-    flushPageIfFull();
+    currentHeightMm += lineHeightMm;
   };
 
   const pushRole = (text) => {
+    flushPageIfFull(lineHeightMm);
     pageBlocks.push({ type: "role", text });
-    lineCount++;
-    flushPageIfFull();
+    currentHeightMm += lineHeightMm;
   };
 
   const pushDivider = () => {
+    flushPageIfFull(DIVIDER_HEIGHT_MM);
     pageBlocks.push({ type: "divider" });
-    lineCount++;
-    flushPageIfFull();
+    currentHeightMm += DIVIDER_HEIGHT_MM;
   };
 
   chunks.forEach((chunk, idx) => {
@@ -153,14 +147,10 @@ function buildSignatures(script, contentChunks) {
   const signatures = [];
   let i = 0;
 
-  // دست اول: ۱۶ صفحه‌ی منطقی می‌سازیم (۱-۱۶)
   const firstSig = new Array(PAGES_PER_SIGNATURE).fill(null);
   
-  // صفحه‌ی جلد همیشه صفحه‌ی ۱۵ است (اندیس ۱۴)
   firstSig[14] = { type: "cover", script };
   
-  // دقیقاً طبق دستور شما: صفحات ۷، ۸، ۱۵، ۱۶ در برگ اول رزرو و خالی می‌مانند برای کاور.
-  // این صفحات معادل اندیس‌های ۶، ۷، ۱۴، ۱۵ هستند که محتوای متنی نمی‌گیرند.
   const firstSigContentIndices = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13];
   
   for (const idx of firstSigContentIndices) {
@@ -169,7 +159,6 @@ function buildSignatures(script, contentChunks) {
   }
   signatures.push(firstSig);
 
-  // دست‌های بعدی (تمام ۱۶ صفحه محتوا می‌گیرند)
   while (i < contentChunks.length) {
     const sig = new Array(PAGES_PER_SIGNATURE).fill(null);
     for (let idx = 0; idx < PAGES_PER_SIGNATURE; idx++) {
@@ -183,7 +172,6 @@ function buildSignatures(script, contentChunks) {
 }
 
 function BookletCell({ page, fontSizePt, rotate }) {
-  // چرخش ۱۸۰ درجه‌ی سلول‌ها برای پرینت غیرترتیب (Long Edge)
   const rotationStyle = rotate ? { transform: "rotate(180deg)" } : {};
   
   if (!page) return <div className="script-card script-card-empty" style={rotationStyle} />;
@@ -204,29 +192,44 @@ function BookletCell({ page, fontSizePt, rotate }) {
     );
   }
 
-  // حذف height اجباری تا مرورگر بتواند خودش در صورت نیاز متن‌ها را Wrap کند،
-  // به کمک بافر safeWidthPx و linesPerTile اطمینان پیدا کردیم که کادر Overflow نمی‌کند.
+  const fontSizeMm = ptToMm(fontSizePt);
+  const lineHeightMm = fontSizeMm * LINE_HEIGHT_RATIO;
+
   return (
     <div className="script-card" style={rotationStyle}>
-      <div className="script-card-body" style={{ fontSize: `${fontSizePt}pt`, overflow: "hidden" }}>
+      <div 
+        className="script-card-body" 
+        style={{ 
+          fontSize: `${fontSizePt}pt`, 
+          height: `${USABLE_HEIGHT_MM}mm`, 
+          overflow: "hidden" 
+        }}
+      >
         {page.blocks.map((block, i) =>
           block.type === "divider" ? (
             <div
               key={i}
               style={{
-                margin: "2mm 0",
-                borderTop: "0.3mm dashed #7a6360"
+                height: `${DIVIDER_HEIGHT_MM}mm`,
+                display: "flex",
+                alignItems: "center",
+                margin: 0
               }}
-            />
+            >
+              <div style={{ width: "100%", borderTop: "0.3mm dashed #7a6360" }} />
+            </div>
           ) : block.type === "role" ? (
             <div
               className="script-card-role"
               key={i}
               style={{
+                height: `${lineHeightMm}mm`,
+                lineHeight: `${lineHeightMm}mm`,
                 margin: 0,
                 fontWeight: "bold",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word"
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                color: "#8c1015"
               }}
             >
               {block.text}
@@ -236,9 +239,14 @@ function BookletCell({ page, fontSizePt, rotate }) {
               className="script-card-line"
               key={i}
               style={{
+                height: `${lineHeightMm}mm`,
+                lineHeight: `${lineHeightMm}mm`,
                 margin: 0,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word"
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textAlign: "justify",
+                textAlignLast: "justify",
+                fontWeight: "bold",
               }}
             >
               {block.text}
@@ -283,14 +291,11 @@ export function PrintBooklet({ script, segments }) {
 
   const faces = [];
   signatures.forEach((sig, sIdx) => {
-    // ترتیب دقیق از بالا سمت راست در صفحه فرد: 1,3,5,7,9,11,13,15
     const oddFacePages = [
       sig[0], sig[2], sig[4], sig[6],
       sig[8], sig[10], sig[12], sig[14]
     ];
     
-    // ترتیب دقیق از بالا سمت راست در صفحه زوج: 8,6,4,2,16,14,12,10
-    // این آرایه برای هر دو حالت پرینت شورت و لانگ دقیقاً یکی و ثابت باقی می‌ماند.
     const evenFacePages = [
       sig[7], sig[5], sig[3], sig[1],
       sig[15], sig[13], sig[11], sig[9]
@@ -300,7 +305,6 @@ export function PrintBooklet({ script, segments }) {
       faces.push({ key: `${sIdx}-odd`, pages: oddFacePages, rotate: false });
     }
     if (!isFaceEmpty(evenFacePages)) {
-      // در حالت لانگ اج (غیر ترتیب)، ترتیب آرایه تغییر نمی‌کند اما تک‌تک کارت‌های صفحه زوج ۱۸۰ درجه می‌چرخند
       faces.push({ key: `${sIdx}-even`, pages: evenFacePages, rotate: duplexEdge === "long" });
     }
   });
