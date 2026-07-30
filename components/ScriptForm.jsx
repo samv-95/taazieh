@@ -22,7 +22,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
   const [printFontSizePt, setPrintFontSizePt] = useState(initial?.print_font_size_pt || "");
   const [printOrientation, setPrintOrientation] = useState(initial?.print_orientation || "landscape");
   const [printStrokePx, setPrintStrokePx] = useState(initial?.print_stroke_px || "");
-
+  const [printDuplexEdge, setPrintDuplexEdge] = useState(initial?.print_duplex_edge || "short");
   // دسته‌بندی‌های (نقش/موضوع) موجود، برای پیشنهاد خودکار موقع تایپ —
   // تا نسخه‌ی جدید دقیقاً به همون دسته‌ی قبلی توی صفحه‌ی اصلی بپیونده.
   const [roleOptions, setRoleOptions] = useState([]);
@@ -42,7 +42,6 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
       setTopicOptions(Array.from(topics).sort());
     })();
   }, []);
-
 
   // هر قطعه: { key, role, body, sourceSegmentId }
   const [segments, setSegments] = useState(
@@ -152,7 +151,9 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         bannerUrl = data.publicUrl;
       }
 
-      const fullBody = segments.map((s) => s.body).join("\n\n");
+      const fullBody = segments
+        .map((s) => [s.role, s.body].filter(Boolean).join("\n"))
+        .join("\n\n");
 
       const payload = {
         title,
@@ -167,6 +168,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         print_orientation: printOrientation,
         print_stroke_px: printStrokePx ? Number(printStrokePx) : null,
         updated_at: new Date().toISOString(),
+        print_duplex_edge: printDuplexEdge,
       };
 
       let currentScriptId = scriptId;
@@ -188,7 +190,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
       // ساده‌ترین راه برای همگام‌سازی قطعات: حذف قطعات قبلی و درج دوباره با ترتیب فعلی
       await supabase.from("script_segments").delete().eq("script_id", currentScriptId);
       const segmentRows = segments
-        .filter((s) => s.body.trim())
+        .filter((s) => (s.body || "").trim() || (s.role || "").trim())
         .map((s, i) => ({
           script_id: currentScriptId,
           role: s.role || null,
@@ -232,7 +234,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         />
       </div>
 
-<div className="field-row">
+      <div className="field-row">
         <div className="field">
           <label htmlFor="roleName">نقش اصلی (برای صفحه‌ی جلد و دسته‌بندی)</label>
           <input
@@ -271,76 +273,89 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         اصلی هم نسخه‌ها بر اساس همین «نقش اصلی» دسته‌بندی می‌شن — برای اینکه این نسخه توی دسته‌ی موجودی مثل «عابس»
         قرار بگیره، حین تایپ از لیست پیشنهادی همون اسم قبلی رو انتخاب کنید.
       </p>
+
       {type === "majles" && (
         <div className="field">
-          <label htmlFor="printFontSizePt">سایز فونت خروجی کاغذی این نسخه (اختیاری)</label>
-          <input
-            id="printFontSizePt"
-            type="number"
-            min="8"
-            max="40"
-            step="0.5"
-            value={printFontSizePt}
-            onChange={(e) => setPrintFontSizePt(e.target.value)}
-            placeholder="پیش‌فرض: ۱۸"
-          />
-          <p className="hint">
-            اگه خالی بذارید، از سایز پیش‌فرض (۱۸) استفاده می‌شه. برای متن‌های طولانی‌تر می‌تونید عدد کوچیک‌تر بذارید
-            تا صفحات کمتری لازم بشه.
-          </p>
-        </div>
-      )}
-
-      <div className="field">
-        <label htmlFor="banner">بنر مجلس (تصویر)</label>
-        {type === "majles" && (
-        <div className="field">
-          <label>جهت خروجی کاغذی این نسخه</label>
+          <label>نوع چاپ دورو این نسخه</label>
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               className="btn"
               style={{
                 flex: 1,
-                background: printOrientation === "landscape" ? "var(--color-crimson)" : "transparent",
-                color: printOrientation === "landscape" ? "var(--color-text)" : "var(--color-gold-bright)",
+                background: printDuplexEdge === "short" ? "var(--color-crimson)" : "transparent",
+                color: printDuplexEdge === "short" ? "var(--color-text)" : "var(--color-gold-bright)",
               }}
-              onClick={() => setPrintOrientation("landscape")}
+              onClick={() => setPrintDuplexEdge("short")}
             >
-              افقی (Landscape)
+              لبه‌ی کوتاه (Short Edge)
             </button>
             <button
               type="button"
               className="btn"
               style={{
                 flex: 1,
-                background: printOrientation === "portrait" ? "var(--color-crimson)" : "transparent",
-                color: printOrientation === "portrait" ? "var(--color-text)" : "var(--color-gold-bright)",
+                background: printDuplexEdge === "long" ? "var(--color-crimson)" : "transparent",
+                color: printDuplexEdge === "long" ? "var(--color-text)" : "var(--color-gold-bright)",
               }}
-              onClick={() => setPrintOrientation("portrait")}
+              onClick={() => setPrintDuplexEdge("long")}
             >
-              عمودی (Portrait)
+              لبه‌ی بلند (Long Edge)
             </button>
           </div>
         </div>
       )}
 
-      {type === "majles" && (
-        <div className="field">
-          <label htmlFor="printStrokePx">ضخامت استروک متن خروجی کاغذی (اختیاری)</label>
-          <input
-            id="printStrokePx"
-            type="number"
-            min="0"
-            max="4"
-            step="0.1"
-            value={printStrokePx}
-            onChange={(e) => setPrintStrokePx(e.target.value)}
-            placeholder="پیش‌فرض: ۱"
-          />
-          <p className="hint">اگه خالی بذارید، از ضخامت پیش‌فرض (۱ پیکسل) استفاده می‌شه.</p>
-        </div>
-      )}
+      <div className="field">
+        <label htmlFor="banner">بنر مجلس (تصویر)</label>
+        {type === "majles" && (
+          <div className="field">
+            <label>جهت خروجی کاغذی این نسخه</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  flex: 1,
+                  background: printOrientation === "landscape" ? "var(--color-crimson)" : "transparent",
+                  color: printOrientation === "landscape" ? "var(--color-text)" : "var(--color-gold-bright)",
+                }}
+                onClick={() => setPrintOrientation("landscape")}
+              >
+                افقی (Landscape)
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  flex: 1,
+                  background: printOrientation === "portrait" ? "var(--color-crimson)" : "transparent",
+                  color: printOrientation === "portrait" ? "var(--color-text)" : "var(--color-gold-bright)",
+                }}
+                onClick={() => setPrintOrientation("portrait")}
+              >
+                عمودی (Portrait)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {type === "majles" && (
+          <div className="field">
+            <label htmlFor="printStrokePx">ضخامت استروک متن خروجی کاغذی (اختیاری)</label>
+            <input
+              id="printStrokePx"
+              type="number"
+              min="0"
+              max="4"
+              step="0.1"
+              value={printStrokePx}
+              onChange={(e) => setPrintStrokePx(e.target.value)}
+              placeholder="پیش‌فرض: ۱"
+            />
+            <p className="hint">اگه خالی بذارید، از ضخامت پیش‌فرض (۱ پیکسل) استفاده می‌شه.</p>
+          </div>
+        )}
         {existingBannerUrl && !bannerFile && (
           <img src={existingBannerUrl} alt="بنر فعلی" className="banner-preview" />
         )}
@@ -376,7 +391,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         </div>
       )}
 
-{(
+      {
         <div className="jong-search-box">
           <label htmlFor="roleSearch">جست‌وجوی نقش یا متن در نسخه‌های دیگر (مجلس یا جُنگ)</label>
           <input
@@ -404,7 +419,7 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
             </div>
           )}
         </div>
-      )}
+      }
 
       <div className="segments-editor">
         <label>متن {type === "jong" ? "(نقش‌ها و توصیف اکت)" : ""}</label>
