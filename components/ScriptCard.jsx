@@ -52,7 +52,11 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   const usableWidthPx = (TILE_W_MM - TILE_PAD_X_MM * 2) * MM_TO_PX;
   const usableHeightPx = (TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM) * MM_TO_PX;
   const lineHeightPx = fontSizePx * LINE_HEIGHT_RATIO;
-  const linesPerTile = Math.max(1, Math.floor(usableHeightPx / lineHeightPx));
+  
+  // بافر اطمینان: برای اینکه مطمئن باشیم هیچ وقت متن از کادر بيرون نمی‌زند
+  // عرض را 15 پیکسل و ارتفاع را به اندازه 1 خط کمتر از فضای واقعی فرض می‌کنیم
+  const safeWidthPx = usableWidthPx - 15;
+  const linesPerTile = Math.max(1, Math.floor(usableHeightPx / lineHeightPx) - 1);
 
   const chunks = [];
   segments.forEach((seg) => {
@@ -119,7 +123,7 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
         const fullWidth = ctx.measureText(para).width;
 
-        if (fullWidth <= usableWidthPx) {
+        if (fullWidth <= safeWidthPx) {
           pushLine(para);
           return;
         }
@@ -128,7 +132,7 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
         let line = "";
         for (const word of words) {
           const candidate = line ? `${line} ${word}` : word;
-          if (ctx.measureText(candidate).width > usableWidthPx && line) {
+          if (ctx.measureText(candidate).width > safeWidthPx && line) {
             pushLine(line);
             line = word;
           } else {
@@ -155,8 +159,8 @@ function buildSignatures(script, contentChunks) {
   // صفحه‌ی جلد همیشه صفحه‌ی ۱۵ است (اندیس ۱۴)
   firstSig[14] = { type: "cover", script };
   
-  // طبق قانون: ۷ و ۸ و ۱۵ و ۱۶ در دست اول باید رزرو بمانند (جایگاه کاور)
-  // اندیس‌های: ۶، ۷، ۱۴، ۱۵ نباید محتوا بگیرند.
+  // دقیقاً طبق دستور شما: صفحات ۷، ۸، ۱۵، ۱۶ در برگ اول رزرو و خالی می‌مانند برای کاور.
+  // این صفحات معادل اندیس‌های ۶، ۷، ۱۴، ۱۵ هستند که محتوای متنی نمی‌گیرند.
   const firstSigContentIndices = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13];
   
   for (const idx of firstSigContentIndices) {
@@ -200,35 +204,29 @@ function BookletCell({ page, fontSizePt, rotate }) {
     );
   }
 
-  // ارتفاع ثابت بر اساس محاسبات کانواس، تا به هیچ‌وجه متن کلیپ (پنهان) نشود
-  const lineBoxHeight = `${fontSizePt * LINE_HEIGHT_RATIO}pt`;
-
+  // حذف height اجباری تا مرورگر بتواند خودش در صورت نیاز متن‌ها را Wrap کند،
+  // به کمک بافر safeWidthPx و linesPerTile اطمینان پیدا کردیم که کادر Overflow نمی‌کند.
   return (
     <div className="script-card" style={rotationStyle}>
-      <div className="script-card-body" style={{ fontSize: `${fontSizePt}pt`, lineHeight: lineBoxHeight }}>
+      <div className="script-card-body" style={{ fontSize: `${fontSizePt}pt`, overflow: "hidden" }}>
         {page.blocks.map((block, i) =>
           block.type === "divider" ? (
             <div
               key={i}
               style={{
-                margin: 0,
-                height: lineBoxHeight,
-                display: "flex",
-                alignItems: "center"
+                margin: "2mm 0",
+                borderTop: "0.3mm dashed #7a6360"
               }}
-            >
-              <div style={{ width: "100%", borderTop: "0.3mm dashed #7a6360" }} />
-            </div>
+            />
           ) : block.type === "role" ? (
             <div
               className="script-card-role"
               key={i}
               style={{
                 margin: 0,
-                height: lineBoxHeight,
-                lineHeight: lineBoxHeight,
-                overflow: "hidden",
-                whiteSpace: "nowrap",
+                fontWeight: "bold",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
               }}
             >
               {block.text}
@@ -239,10 +237,8 @@ function BookletCell({ page, fontSizePt, rotate }) {
               key={i}
               style={{
                 margin: 0,
-                height: lineBoxHeight,
-                lineHeight: lineBoxHeight,
-                overflow: "hidden",
-                whiteSpace: "nowrap",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
               }}
             >
               {block.text}
@@ -273,7 +269,6 @@ function BookletFace({ pages, breakAfter, fontSizePt, rotate }) {
 export function PrintBooklet({ script, segments }) {
   const [signatures, setSignatures] = useState(null);
   const fontSizePt = Number(script?.print_font_size_pt) || PRINT_FONT_PT;
-  const strokePx = Number(script?.print_stroke_px) ?? 1;
   const duplexEdge = script?.print_duplex_edge === "long" ? "long" : "short";
 
   useEffect(() => {
@@ -288,34 +283,25 @@ export function PrintBooklet({ script, segments }) {
 
   const faces = [];
   signatures.forEach((sig, sIdx) => {
-    // ترتیب دقیق صفحات فرد از بالا سمت راست
+    // ترتیب دقیق از بالا سمت راست در صفحه فرد: 1,3,5,7,9,11,13,15
     const oddFacePages = [
       sig[0], sig[2], sig[4], sig[6],
       sig[8], sig[10], sig[12], sig[14]
     ];
     
-    let evenFacePages;
-    const isLongEdge = duplexEdge === "long";
-    
-    if (isLongEdge) {
-      // در حالت لانگ‌اج برای تطبیق، ترتیب معکوس شده و سپس هر کارت ۱۸۰ درجه می‌چرخد
-      evenFacePages = [
-        sig[9], sig[11], sig[13], sig[15],
-        sig[1], sig[3], sig[5], sig[7]
-      ];
-    } else {
-      // ترتیب استاندارد صفحات زوج از بالا سمت راست
-      evenFacePages = [
-        sig[7], sig[5], sig[3], sig[1],
-        sig[15], sig[13], sig[11], sig[9]
-      ];
-    }
+    // ترتیب دقیق از بالا سمت راست در صفحه زوج: 8,6,4,2,16,14,12,10
+    // این آرایه برای هر دو حالت پرینت شورت و لانگ دقیقاً یکی و ثابت باقی می‌ماند.
+    const evenFacePages = [
+      sig[7], sig[5], sig[3], sig[1],
+      sig[15], sig[13], sig[11], sig[9]
+    ];
 
     if (!isFaceEmpty(oddFacePages)) {
       faces.push({ key: `${sIdx}-odd`, pages: oddFacePages, rotate: false });
     }
     if (!isFaceEmpty(evenFacePages)) {
-      faces.push({ key: `${sIdx}-even`, pages: evenFacePages, rotate: isLongEdge });
+      // در حالت لانگ اج (غیر ترتیب)، ترتیب آرایه تغییر نمی‌کند اما تک‌تک کارت‌های صفحه زوج ۱۸۰ درجه می‌چرخند
+      faces.push({ key: `${sIdx}-even`, pages: evenFacePages, rotate: duplexEdge === "long" });
     }
   });
 
@@ -334,7 +320,6 @@ export function PrintBooklet({ script, segments }) {
   );
 }
 
-// خروجی کاغذی برای «جُنگ» — بدون تغییر
 export function PrintJongDocument({ script, segments }) {
   return (
     <div className="print-only">
