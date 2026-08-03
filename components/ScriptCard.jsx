@@ -66,6 +66,11 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
   const usableWidthMm = TILE_W_MM - TILE_PAD_X_MM * 2;
   const usableHeightPx = (TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM) * MM_TO_PX;
+  // یک حاشیه‌ی امن کوچک (~۱mm) کم می‌کنیم تا هیچ‌وقت خط آخر درست لب
+  // کادر رندر نشه؛ بدون این حاشیه، گاهی به‌خاطر گرد شدن اعداد در
+  // مرورگر، یک خط دقیقاً روی مرز اندازه‌گیری می‌شد ولی در رندر نهایی
+  // چند دهم پیکسل بیشتر می‌شد و لبه‌اش افتاده/بریده به نظر می‌رسید.
+  const SAFETY_MARGIN_PX = MM_TO_PX; // ~۱mm
 
   // ظرف اندازه‌گیری: دقیقاً هم‌عرض ناحیه‌ی متن یک کارت واقعی، با همان
   // فونت/سایز/line-height؛ نامرئی و خارج از دید، ولی واقعاً در DOM
@@ -164,7 +169,7 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
     });
   };
 
-  const fitsInTile = () => measurer.scrollHeight <= usableHeightPx + 0.5;
+  const fitsInTile = () => measurer.scrollHeight <= usableHeightPx - SAFETY_MARGIN_PX;
 
   const pages = [];
   let pageBlocks = [];
