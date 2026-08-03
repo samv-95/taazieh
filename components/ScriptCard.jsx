@@ -31,7 +31,7 @@ const PAGES_PER_SIGNATURE = 16; // ۸ فرد + ۸ زوج = یک دست برگه 
 // ابعاد داخل هر کارت (میلی‌متر) — باید با styles/print.css هماهنگ بماند
 const TILE_W_MM = 74.25;
 const TILE_H_MM = 105;
-const TILE_PAD_X_MM = 1; // یک طرف؛ کل پدینگ افقی = ۲×این عدد
+const TILE_PAD_X_MM = 4; // یک طرف؛ باید با پدینگ افقی styles/print.css (.script-card) هماهنگ بماند — کل پدینگ افقی = ۲×این عدد
 const TILE_PAD_TOP_MM = 8; // فاصله‌ی بالای کارت تا متن، کمی بیشتر از بقیه
 const TILE_PAD_BOTTOM_MM = 4;
 const PRINT_FONT_PT = 16;
@@ -39,7 +39,6 @@ const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
 const LINE_HEIGHT_RATIO = 1.30;
 
 const MM_TO_PX = 96 / 25.4;
-const PT_TO_PX = 96 / 72;
 
 // با کانواس، دقیقاً اندازه‌گیری می‌کنیم چند کاراکتر/خط در هر کارت با
 // فونت و سایز موردنظر جا می‌شود؛ سپس قطعات را به همان اندازه تقسیم می‌کنیم.
@@ -51,18 +50,53 @@ const PT_TO_PX = 96 / 72;
 // و بعدی، خودکار یک جداکننده گذاشته می‌شود. اگر کسی قبلاً داخل متنش
 // دستی یک خط از خط‌تیره/ـ گذاشته (۳ کاراکتر یا بیشتر پشت‌سرهم) همان‌جا
 // هم به‌طور خودکار به یک جداکننده‌ی چاپی واقعی تبدیل می‌شود.
+// نکته‌ی مهم: قبلاً اندازه‌گیری با canvas + ctx.measureText انجام می‌شد.
+// canvas برای فونت لاتین دقیق است، ولی برای فونت فارسی/عربی مثل
+// B Nazanin — که حروفش به‌هم می‌چسبند و شکل هر حرف بسته به موقعیتش
+// در کلمه (اول/وسط/آخر) عوض می‌شود — عرض واقعی متن را کمتر از
+// واقعیت تخمین می‌زد. نتیجه: بعضی خط‌ها در تخمین «جا می‌شدند» ولی در
+// رندر واقعی (که overflow: hidden دارد) جا نمی‌شدند و کاملاً بی‌صدا
+// از کارت چاپی حذف می‌شدند — نه بریده، بلکه کاملاً ناپدید.
+// برای همین دیگر به‌جای حدس‌زدن با canvas، مستقیماً یک نسخه‌ی مخفی و
+// دقیقاً هم‌شکل با کارت واقعی چاپی می‌سازیم و خط‌به‌خط داخلش می‌چینیم؛
+// هر بار ارتفاع/عرض واقعی DOM را چک می‌کنیم. این روش به هیچ فونتی
+// وابسته نیست و همیشه با آنچه واقعاً چاپ می‌شود یکی است.
 function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   if (typeof document === "undefined") return [];
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  const fontSizePx = fontSizePt * PT_TO_PX;
-  ctx.font = `bold ${fontSizePx}px ${PRINT_FONT_FAMILY}`;
-
-  const usableWidthPx = (TILE_W_MM - TILE_PAD_X_MM * 2) * MM_TO_PX;
+  const usableWidthMm = TILE_W_MM - TILE_PAD_X_MM * 2;
   const usableHeightPx = (TILE_H_MM - TILE_PAD_TOP_MM - TILE_PAD_BOTTOM_MM) * MM_TO_PX;
-  const lineHeightPx = fontSizePx * LINE_HEIGHT_RATIO;
-  const linesPerTile = Math.max(1, Math.floor(usableHeightPx / lineHeightPx));
+
+  // ظرف اندازه‌گیری: دقیقاً هم‌عرض ناحیه‌ی متن یک کارت واقعی، با همان
+  // فونت/سایز/line-height؛ نامرئی و خارج از دید، ولی واقعاً در DOM
+  // رندر می‌شود تا مرورگر شکل واقعی حروف فارسی را بسازد و اندازه‌ی
+  // واقعی را بدهد.
+  const measurer = document.createElement("div");
+  measurer.style.position = "fixed";
+  measurer.style.visibility = "hidden";
+  measurer.style.pointerEvents = "none";
+  measurer.style.left = "-9999px";
+  measurer.style.top = "0";
+  measurer.style.width = `${usableWidthMm}mm`;
+  measurer.style.fontSize = `${fontSizePt}pt`;
+  measurer.style.lineHeight = String(LINE_HEIGHT_RATIO);
+  measurer.style.fontFamily = PRINT_FONT_FAMILY;
+  measurer.style.fontWeight = "bold";
+  document.body.appendChild(measurer);
+
+  const lineEl = document.createElement("p");
+  lineEl.className = "script-card-line";
+  lineEl.style.margin = "0";
+  lineEl.style.whiteSpace = "nowrap";
+  measurer.appendChild(lineEl);
+
+  // عرض واقعی یک رشته را با رندر واقعی در همان ظرف اندازه می‌گیریم
+  // (نه canvas) — این دقیقاً همان چیزی است که در چاپ واقعی رندر می‌شود.
+  const measureLineWidthPx = (text) => {
+    lineEl.textContent = text;
+    return lineEl.scrollWidth;
+  };
+  const usableWidthPx = measurer.clientWidth;
 
   // همه‌ی قطعات را به «تکه‌متن»‌های جدا تبدیل می‌کنیم: هم مرز بین
   // قطعه‌های مختلف، هم خط‌چین دستی داخل یک قطعه، هر دو یک مرز حساب می‌شوند.
@@ -76,42 +110,17 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
       .forEach((part) => chunks.push(part));
   });
 
-  const pages = [];
-  let pageBlocks = [];
-  let lineCount = 0;
-
-  const flushPageIfFull = () => {
-    if (lineCount >= linesPerTile) {
-      pages.push(pageBlocks);
-      pageBlocks = [];
-      lineCount = 0;
-    }
-  };
-
-  const pushLine = (text) => {
-    pageBlocks.push({ type: "line", text });
-    lineCount++;
-    flushPageIfFull();
-  };
-
-  const pushDivider = () => {
-    pageBlocks.push({ type: "divider" });
-    lineCount++;
-    flushPageIfFull();
-  };
-
+  // همه‌ی خط‌ها/جداکننده‌ها را اول کامل می‌سازیم (بدون توجه به ارتفاع
+  // کارت)، بعد در مرحله‌ی دوم بر اساس ارتفاع واقعی صفحه‌بندی می‌کنیم.
+  const blocks = [];
   chunks.forEach((text, idx) => {
-    // بین دو تکه پشت‌سرهم یک جداکننده می‌گذاریم؛ مگر این‌که دقیقاً از
-    // ابتدای یک کارت خالی شروع شده باشیم (لبه‌ی کارت خودش مرز است).
-    if (idx > 0 && pageBlocks.length > 0) pushDivider();
+    if (idx > 0 && blocks.length > 0) blocks.push({ type: "divider" });
 
     const paragraphs = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
 
     paragraphs.forEach((para) => {
-      const fullWidth = ctx.measureText(para).width;
-
-      if (fullWidth <= usableWidthPx) {
-        pushLine(para);
+      if (measureLineWidthPx(para) <= usableWidthPx) {
+        blocks.push({ type: "line", text: para });
         return;
       }
 
@@ -122,18 +131,60 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
       let line = "";
       for (const word of words) {
         const candidate = line ? `${line} ${word}` : word;
-        if (ctx.measureText(candidate).width > usableWidthPx && line) {
-          pushLine(line);
+        if (measureLineWidthPx(candidate) > usableWidthPx && line) {
+          blocks.push({ type: "line", text: line });
           line = word;
         } else {
           line = candidate;
         }
       }
-      if (line) pushLine(line);
+      if (line) blocks.push({ type: "line", text: line });
     });
   });
 
+  // مرحله‌ی دوم: با همان ظرف مخفی، خط‌به‌خط واقعاً می‌چینیم و ارتفاع
+  // واقعی DOM را چک می‌کنیم تا بفهمیم کِی کارت واقعاً پر شده — نه بر
+  // اساس فرمول تخمینی، بلکه بر اساس چیزی که مرورگر خودش اندازه می‌گیرد.
+  measurer.innerHTML = "";
+  measurer.style.whiteSpace = "normal";
+
+  const renderBlocksInMeasurer = (list) => {
+    measurer.innerHTML = "";
+    list.forEach((b) => {
+      if (b.type === "divider") {
+        const hr = document.createElement("hr");
+        hr.className = "script-card-divider";
+        measurer.appendChild(hr);
+      } else {
+        const p = document.createElement("p");
+        p.className = "script-card-line";
+        p.textContent = b.text;
+        measurer.appendChild(p);
+      }
+    });
+  };
+
+  const fitsInTile = () => measurer.scrollHeight <= usableHeightPx + 0.5;
+
+  const pages = [];
+  let pageBlocks = [];
+
+  blocks.forEach((block) => {
+    const candidate = [...pageBlocks, block];
+    renderBlocksInMeasurer(candidate);
+    if (fitsInTile() || pageBlocks.length === 0) {
+      // یا واقعاً جا می‌شود، یا این اولین بلوکِ یک کارتِ خالی است —
+      // در این حالت دوم حتی اگر خودش هم بزرگ‌تر از کارت باشد باید
+      // جایی چاپ شود، وگرنه برای همیشه گم می‌شود.
+      pageBlocks = candidate;
+    } else {
+      pages.push(pageBlocks);
+      pageBlocks = [block];
+    }
+  });
   if (pageBlocks.length) pages.push(pageBlocks);
+
+  document.body.removeChild(measurer);
 
   return pages.length ? pages : [[]];
 }

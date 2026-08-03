@@ -95,7 +95,7 @@
    شده و از پایین کادر بیرون بزند، فقط از کنار بریده (clip) می‌شود —
    یعنی دیگر هیچ کادری از A4 بیرون نمی‌افتد و صفحه‌ی الکی اضافه ساخته نمی‌شود. */
 .script-card-line {
-  margin: 1;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
