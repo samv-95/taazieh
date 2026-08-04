@@ -61,6 +61,61 @@ const MM_TO_PX = 96 / 25.4;
 // دقیقاً هم‌شکل با کارت واقعی چاپی می‌سازیم و خط‌به‌خط داخلش می‌چینیم؛
 // هر بار ارتفاع/عرض واقعی DOM را چک می‌کنیم. این روش به هیچ فونتی
 // وابسته نیست و همیشه با آنچه واقعاً چاپ می‌شود یکی است.
+
+// یک پاراگراف را بین چند خط می‌شکند طوری که به‌جای پرکردن حریصانه‌ی
+// خط‌های اول (که می‌تواند فقط یک کلمه‌ی تنها را به خط آخر بیندازد،
+// مثل «... تا / چند»)، کلمات تا حد امکان متعادل بین خط‌ها پخش شوند.
+// تعداد خط‌های لازم همان چیزی می‌ماند که روش حریصانه پیدا می‌کند —
+// فقط نحوه‌ی پخش کلمات بین همان تعداد خط بهتر می‌شود.
+function wrapParagraphBalanced(para, measureLineWidthPx, usableWidthPx) {
+  const words = para.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
+  const greedyLines = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (measureLineWidthPx(candidate) > usableWidthPx && line) {
+      greedyLines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) greedyLines.push(line);
+
+  if (greedyLines.length <= 1) return greedyLines;
+
+  const targetLineCount = greedyLines.length;
+  const wordsPerLine = Math.ceil(words.length / targetLineCount);
+  const balanced = [];
+  let idx = 0;
+  for (let li = 0; li < targetLineCount && idx < words.length; li++) {
+    let count = Math.min(wordsPerLine, words.length - idx);
+    let candidate = words.slice(idx, idx + count).join(" ");
+    while (count > 1 && measureLineWidthPx(candidate) > usableWidthPx) {
+      count--;
+      candidate = words.slice(idx, idx + count).join(" ");
+    }
+    balanced.push(candidate);
+    idx += count;
+  }
+  if (idx < words.length) {
+    balanced[balanced.length - 1] += " " + words.slice(idx).join(" ");
+  }
+
+  const lastGreedyWordCount = greedyLines[greedyLines.length - 1].split(/\s+/).filter(Boolean).length;
+  const lastBalancedWordCount = balanced[balanced.length - 1].split(/\s+/).filter(Boolean).length;
+
+  // فقط وقتی نسخه‌ی متعادل را قبول می‌کنیم که واقعاً بهتر از حریصانه
+  // باشد (خط آخرش کلمه‌ی بیشتری داشته باشد، یعنی دیگر تک‌کلمه‌ای/یتیم
+  // نیست) و تعداد خط‌هایش زیاد نشده باشد.
+  if (balanced.length <= targetLineCount && lastBalancedWordCount > lastGreedyWordCount) {
+    return balanced;
+  }
+  return greedyLines;
+}
+
 function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
   if (typeof document === "undefined") return [];
 
@@ -131,19 +186,13 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT) {
 
       // اگر یک مصرع/پاراگراف از عرض کارت بلندتر بود، بین چند خط
       // می‌شکنیمش — نه کوچیک‌کردن فونت، تا اندازه‌ی فونت در کل متن
-      // همیشه یکسان بماند.
-      const words = para.split(/\s+/).filter(Boolean);
-      let line = "";
-      for (const word of words) {
-        const candidate = line ? `${line} ${word}` : word;
-        if (measureLineWidthPx(candidate) > usableWidthPx && line) {
-          blocks.push({ type: "line", text: line });
-          line = word;
-        } else {
-          line = candidate;
-        }
-      }
-      if (line) blocks.push({ type: "line", text: line });
+      // همیشه یکسان بماند. به‌جای پرکردن حریصانه‌ی خط اول (که ممکن
+      // است فقط یک کلمه‌ی تنها/«یتیم» را به خط بعد بیندازد، مثل
+      // «... تا / چند»)، کلمات را تا حد امکان متعادل بین خط‌ها پخش
+      // می‌کنیم.
+      wrapParagraphBalanced(para, measureLineWidthPx, usableWidthPx).forEach((line) => {
+        blocks.push({ type: "line", text: line });
+      });
     });
   });
 
