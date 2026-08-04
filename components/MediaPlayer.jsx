@@ -1,15 +1,69 @@
+import { useEffect, useState } from "react";
+import { getCachedMediaUrl } from "../lib/mediaCache";
+
+// جلوگیری از راست‌کلیک/نگه‌داشتن انگشت روی پلیر (که در خیلی از مرورگرها
+// منوی «ذخیره‌ی صدا/ویدئو» را باز می‌کند). این کار دانلود مستقیم را برای
+// کاربر عادی حذف می‌کند، ولی چون همه‌چیز نهایتاً در خودِ مرورگر اجرا
+// می‌شود، هیچ روش وبی ۱۰۰٪ ضدضربه در برابر کاربر خیلی مصمم (مثلاً از
+// طریق ابزارهای توسعه‌دهنده) وجود ندارد؛ این یک بازدارنده‌ی واقع‌بینانه
+// است، نه یک قفل غیرقابل‌دور زدن.
+function blockContextMenu(e) {
+  e.preventDefault();
+  return false;
+}
+
 export default function MediaPlayer({ mediaType, mediaUrl, title }) {
+  const [playbackUrl, setPlaybackUrl] = useState(mediaUrl);
+
+  useEffect(() => {
+    let objectUrlToRevoke = null;
+    let cancelled = false;
+
+    setPlaybackUrl(mediaUrl);
+
+    // اگر این رسانه قبلاً از صفحه‌ی «دانلودها» برای پخش آفلاین ذخیره
+    // شده باشد، به‌جای استریم از سرور، از همان نسخه‌ی ذخیره‌شده در
+    // خودِ برنامه پخش می‌کنیم (هم آفلاین کار می‌کند، هم یک درخواست
+    // شبکه‌ی اضافه لازم نیست).
+    (async () => {
+      const cachedUrl = await getCachedMediaUrl(mediaUrl);
+      if (cachedUrl && !cancelled) {
+        objectUrlToRevoke = cachedUrl;
+        setPlaybackUrl(cachedUrl);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
+    };
+  }, [mediaUrl]);
+
   if (!mediaUrl || mediaType === "none") return null;
 
   return (
     <div className="media-sticky no-print">
       <div className="media-sticky-inner">
         {mediaType === "video" ? (
-          <video src={mediaUrl} controls playsInline preload="metadata" />
+          <video
+            src={playbackUrl}
+            controls
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
+            playsInline
+            preload="metadata"
+            onContextMenu={blockContextMenu}
+          />
         ) : (
           <div className="audio-row">
             <span className="audio-label">🎙 {title || "پخش صوت"}</span>
-            <audio src={mediaUrl} controls preload="metadata" />
+            <audio
+              src={playbackUrl}
+              controls
+              controlsList="nodownload noremoteplayback"
+              preload="metadata"
+              onContextMenu={blockContextMenu}
+            />
           </div>
         )}
       </div>
