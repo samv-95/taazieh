@@ -26,7 +26,7 @@ function Archive() {
     const q = query.trim();
     return scripts.filter((s) => {
       if (type !== "all" && s.type !== type) return false;
-      if (q && !s.title?.includes(q)) return false;
+      if (q && !s.role_name?.includes(q)) return false;
       return true;
     });
   }, [scripts, type, query]);
@@ -60,7 +60,7 @@ function Archive() {
       <input
         type="text"
         className="category-search-input"
-        placeholder="جست‌وجوی عنوان…"
+        placeholder="جست‌وجوی نقش اصلی…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

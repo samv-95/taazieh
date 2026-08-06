@@ -57,13 +57,7 @@ function ScriptDetail() {
       <div className="container no-print">
         <p className="eyebrow no-print">{isJong ? "جُنگ" : "مجلس تعزیه"}</p>
         <h1 className="page-title no-print">{script.title}</h1>
-        {(script.role_name || script.topic) && (
-          <p className="page-subtitle no-print">
-            {script.role_name}
-            {script.role_name && script.topic ? " از " : ""}
-            {script.topic}
-          </p>
-        )}
+        {script.role_name && <p className="page-subtitle no-print">{script.role_name}</p>}
 
         <div className="no-print" style={{ margin: "16px 0" }}>
           <button className="btn" onClick={() => window.print()}>

@@ -4,10 +4,7 @@ import CategoryAccordion from "./CategoryAccordion";
 import { groupByTopic } from "../lib/categorize";
 import { supabase } from "../lib/supabase";
 
-const displayName = (s) => {
-  if (s.role_name?.trim() && s.topic?.trim()) return `${s.role_name.trim()} از ${s.topic.trim()}`;
-  return s.role_name?.trim() || s.topic?.trim() || s.title;
-};
+const displayName = (s) => s.role_name?.trim() || s.title;
 
 export default function AdminCategorizedScripts() {
   const [scripts, setScripts] = useState(null);
@@ -35,7 +32,7 @@ export default function AdminCategorizedScripts() {
     if (!scripts) return [];
     const q = query.trim();
     if (!q) return scripts;
-    return scripts.filter((s) => s.role_name?.includes(q) || s.title?.includes(q));
+    return scripts.filter((s) => s.role_name?.includes(q));
   }, [scripts, query]);
 
   const majles = useMemo(() => filtered.filter((s) => s.type !== "jong"), [filtered]);
@@ -77,7 +74,7 @@ export default function AdminCategorizedScripts() {
       <input
         type="text"
         className="category-search-input"
-        placeholder="جست‌وجوی نقش یا عنوان… مثلاً: امام"
+        placeholder="جست‌وجوی نقش اصلی… مثلاً: امام"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

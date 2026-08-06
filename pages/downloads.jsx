@@ -44,7 +44,7 @@ function Downloads() {
   const filtered = useMemo(() => {
     if (!scripts) return [];
     const q = query.trim();
-    return q ? scripts.filter((s) => s.title?.includes(q)) : scripts;
+    return q ? scripts.filter((s) => s.role_name?.includes(q)) : scripts;
   }, [scripts, query]);
 
   const categories = useMemo(() => groupByTopic(filtered), [filtered]);
@@ -108,7 +108,7 @@ function Downloads() {
       <input
         type="text"
         className="category-search-input"
-        placeholder="جست‌وجوی عنوان…"
+        placeholder="جست‌وجوی نقش اصلی…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

@@ -41,13 +41,7 @@ function OfflineReader() {
     <div className="container">
       <p className="eyebrow">مشاهده‌ی آفلاین</p>
       <h1 className="page-title">{script.title}</h1>
-      {(script.role_name || script.topic) && (
-        <p className="page-subtitle">
-          {script.role_name}
-          {script.role_name && script.topic ? " از " : ""}
-          {script.topic}
-        </p>
-      )}
+      {script.role_name && <p className="page-subtitle">{script.role_name}</p>}
       <ScriptCard segments={displaySegments} />
     </div>
   );

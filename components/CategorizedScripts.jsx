@@ -31,16 +31,14 @@ export default function CategorizedScripts() {
       .sort((a, b) => b.items.length - a.items.length);
   }, [scripts]);
 
-  // جست‌وجو هم روی نام نقش هم روی عنوان انجام می‌شود؛ مثلاً تایپ
-  // «امام» باید نسخه‌ای با role_name = «امام» را پیدا کند، حتی اگر
-  // عنوان کامل آن نسخه شامل کلمه‌ی «امام» نباشد.
+  // جست‌وجو فقط روی «نقش اصلی» انجام می‌شود، نه عنوان کامل.
   const filteredCategories = useMemo(() => {
     const q = query.trim();
     if (!q) return categories;
     return categories
       .map((cat) => ({
         ...cat,
-        items: cat.items.filter((s) => s.role_name?.includes(q) || s.title?.includes(q)),
+        items: cat.items.filter((s) => s.role_name?.includes(q)),
       }))
       .filter((cat) => cat.items.length > 0);
   }, [categories, query]);
@@ -62,19 +60,19 @@ export default function CategorizedScripts() {
 
   if (!scripts) return <p>در حال بارگذاری…</p>;
 
-  // اسم نمایشی هر نسخه: «نقش از موضوع» — اگر یکی از این دو نبود، همان
-  // یکی که هست؛ اگر هیچ‌کدام نبود، عنوان کامل.
-  const displayName = (s) => {
-    if (s.role_name?.trim() && s.topic?.trim()) return `${s.role_name.trim()} از ${s.topic.trim()}`;
-    return s.role_name?.trim() || s.topic?.trim() || s.title;
-  };
+  // اسم نمایشی هر نسخه در لیست زیرمنو: فقط «نقش اصلی» — دیگر با
+  // موضوع مجلس ترکیب نمی‌شود (چون همان موضوع، اسم خودِ دسته است و
+  // تکرارش زیر هر آیتم اضافی است). این فقط نمایش توی برنامه را عوض
+  // می‌کند؛ خروجی چاپی (booklet) در ScriptCard.jsx جداگانه است و
+  // دست نخورده می‌ماند.
+  const displayName = (s) => s.role_name?.trim() || s.title;
 
   return (
     <div className="category-search">
       <input
         type="text"
         className="category-search-input"
-        placeholder="جست‌وجوی نقش یا عنوان… مثلاً: امام"
+        placeholder="جست‌وجوی نقش اصلی… مثلاً: امام"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
