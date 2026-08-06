@@ -51,6 +51,12 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+
+  /* اندازه‌ی «۱/۴ A4» (نصف A5): همون برگه‌ی A4 افقی، ولی فقط ۲ ستون
+     به‌جای ۴ (هر خانه دو برابر عریض‌تر). ردیف‌ها همچنان ۲ تا هستند. */
+  .print-sheet-booklet--quarter {
+    grid-template-columns: repeat(2, var(--tile-w));
+  }
 }
 
 /* همه‌ی کارت‌ها (جلد و متن) دقیقاً یک شکل‌اند؛ چون گپ صفر است و
