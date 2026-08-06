@@ -76,8 +76,7 @@ function AudioPlayer({ mediaUrl, title }) {
     const el = audioRef.current;
     if (!el || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    // چون صفحه RTL است، سمت راست نوار = ابتدای زمان
-    const ratio = 1 - Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     el.currentTime = ratio * duration;
   };
 
@@ -91,7 +90,11 @@ function AudioPlayer({ mediaUrl, title }) {
   const progressPct = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="audio-player">
+    // این کنترل عمداً dir="ltr" است، جدا از بقیه‌ی صفحه که راست‌چین
+    // است — همین کاری‌ست که واتساپ/تلگرام فارسی هم برای نوار پیام
+    // صوتی انجام می‌دهند؛ دکمه‌ی پخش همیشه سمت چپ می‌ماند و نوار از
+    // چپ به راست پر می‌شود، بدون تناقض بین جهت دایره و جهت رنگ پرشده.
+    <div className="audio-player" dir="ltr">
       <audio
         ref={audioRef}
         src={playbackUrl}
@@ -118,12 +121,14 @@ function AudioPlayer({ mediaUrl, title }) {
       </button>
 
       <div className="audio-main">
-        <span className="audio-label">🎙 {title || "پخش صوت"}</span>
+        <span className="audio-label" dir="rtl">
+          🎙 {title || "پخش صوت"}
+        </span>
         <div className="seek-row">
           <span className="time">{formatTime(currentTime)}</span>
           <div className="seek-track" onClick={handleSeek}>
             <div className="seek-fill" style={{ width: `${progressPct}%` }} />
-            <div className="seek-thumb" style={{ insetInlineStart: `${progressPct}%` }} />
+            <div className="seek-thumb" style={{ left: `${progressPct}%` }} />
           </div>
           <span className="time">{formatTime(duration)}</span>
         </div>
@@ -215,7 +220,7 @@ function AudioPlayer({ mediaUrl, title }) {
         }
         .seek-fill {
           position: absolute;
-          inset-inline-end: 0;
+          left: 0;
           top: 0;
           bottom: 0;
           border-radius: 4px;
@@ -229,7 +234,7 @@ function AudioPlayer({ mediaUrl, title }) {
           border-radius: 50%;
           background: var(--color-gold-bright);
           box-shadow: 0 0 0 2px var(--color-bg);
-          transform: translate(50%, -50%);
+          transform: translate(-50%, -50%);
         }
       `}</style>
     </div>
