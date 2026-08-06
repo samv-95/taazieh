@@ -456,10 +456,36 @@ export default function ScriptForm({ initial, scriptId, initialSegments }) {
         </p>
       </div>
 
-      <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
-        {saving ? progressText || "در حال ذخیره…" : "ذخیره نسخه"}
-      </button>
-      {error && <p className="error-text">{error}</p>}
+      <div className="sticky-save-bar">
+        <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
+          {saving ? progressText || "در حال ذخیره…" : "ذخیره نسخه"}
+        </button>
+        {error && <p className="error-text">{error}</p>}
+      </div>
+      {/* فاصله‌ی خالی هم‌قد نوار پایین، تا محتوای آخر فرم زیر نوار ثابت گم نشود */}
+      <div aria-hidden="true" style={{ height: 84 }} />
+
+      <style jsx>{`
+        .sticky-save-bar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 30;
+          background: var(--color-surface);
+          border-top: 2px solid var(--color-gold);
+          padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+          box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.4);
+        }
+        .sticky-save-bar :global(.btn-block) {
+          max-width: 760px;
+          margin: 0 auto;
+        }
+        .sticky-save-bar .error-text {
+          max-width: 760px;
+          margin: 8px auto 0;
+        }
+      `}</style>
     </form>
   );
 }
