@@ -105,10 +105,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
-  font-weight: bold;
+  font-weight: 900;
+  -webkit-text-stroke: 0.35px currentColor;
   text-align: justify;
   text-align-last: justify;
-  word-spacing: 1px;
+  word-spacing: 0.3px;
 }
 
 /* جداکننده‌ی خودکار بین قطعات — جایگزین خط‌چینی که قبلاً باید دستی

@@ -45,17 +45,20 @@ function PrintOptions({ segments, isJong, sizeMode, setSizeMode, selectedKeys, s
             <div className="print-options-row">
               <span className="print-options-label">اندازه‌ی خروجی:</span>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {["eighth", "quarter"].map((key) => (
-                  <label key={key} className="print-size-option">
-                    <input
-                      type="radio"
-                      name="sizeMode"
-                      checked={sizeMode === key}
-                      onChange={() => setSizeMode(key)}
-                    />
-                    {key === "eighth" ? "۱/۸ برگه‌ی A4 (معمولی)" : "۱/۴ برگه‌ی A4 = نصف A5 (فونت درشت‌تر)"}
-                  </label>
-                ))}
+                <button
+                  type="button"
+                  className={"btn size-btn" + (sizeMode === "eighth" ? " size-btn-active" : "")}
+                  onClick={() => setSizeMode("eighth")}
+                >
+                  کوچک
+                </button>
+                <button
+                  type="button"
+                  className={"btn size-btn" + (sizeMode === "quarter" ? " size-btn-active" : "")}
+                  onClick={() => setSizeMode("quarter")}
+                >
+                  بزرگ
+                </button>
               </div>
             </div>
           )}
@@ -90,26 +93,42 @@ function PrintOptions({ segments, isJong, sizeMode, setSizeMode, selectedKeys, s
 
             <div className="print-options-list">
               {filteredSegments.length === 0 && <p className="hint">چیزی پیدا نشد.</p>}
-              {filteredSegments.map((s) => (
-                <label key={s._key} className="print-options-item">
-                  <input
-                    type="checkbox"
-                    checked={selectedKeys.has(s._key)}
-                    onChange={() => toggleOne(s._key)}
-                  />
-                  <span>
-                    {s.role && <strong>{s.role}: </strong>}
-                    {(s.body || "").slice(0, 60)}
-                    {(s.body || "").length > 60 ? "…" : ""}
-                  </span>
-                </label>
-              ))}
+              {filteredSegments.map((s) => {
+                const selected = selectedKeys.has(s._key);
+                return (
+                  <div
+                    key={s._key}
+                    className={"print-options-item" + (selected ? " print-options-item-selected" : "")}
+                    onClick={() => toggleOne(s._key)}
+                    role="checkbox"
+                    aria-checked={selected}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleOne(s._key);
+                      }
+                    }}
+                  >
+                    {s.body}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
       <style jsx>{`
+        .size-btn {
+          opacity: 0.55;
+        }
+        .size-btn-active {
+          opacity: 1;
+          border-color: var(--color-gold-bright);
+          background: var(--color-gold);
+          color: var(--color-bg);
+        }
         .print-options-panel {
           margin-top: 10px;
           background: var(--color-surface-raised);
@@ -129,12 +148,6 @@ function PrintOptions({ segments, isJong, sizeMode, setSizeMode, selectedKeys, s
           color: var(--color-gold-bright);
           margin-bottom: 8px;
         }
-        .print-size-option {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 13px;
-        }
         .print-options-list {
           max-height: 260px;
           overflow-y: auto;
@@ -146,19 +159,20 @@ function PrintOptions({ segments, isJong, sizeMode, setSizeMode, selectedKeys, s
           padding: 8px;
         }
         .print-options-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
+          cursor: pointer;
           font-size: 13px;
-          padding: 4px;
+          line-height: 1.6;
+          padding: 8px 10px;
           border-radius: 4px;
+          border: 1px solid transparent;
         }
         .print-options-item:hover {
           background: var(--color-surface);
         }
-        .print-options-item input {
-          margin-top: 3px;
-          flex-shrink: 0;
+        .print-options-item-selected {
+          background: var(--color-surface);
+          border-color: var(--color-gold);
+          color: var(--color-gold-bright);
         }
       `}</style>
     </div>

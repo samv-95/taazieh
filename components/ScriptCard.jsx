@@ -26,8 +26,6 @@ export default function ScriptCard({ segments }) {
 // صفحات فرد روی یک روی برگه و صفحات زوج روی روی دیگر چاپ می‌شوند.
 // ============================================================
 
-const PAGES_PER_SIGNATURE = 16; // ۸ فرد + ۸ زوج = یک دست برگه (رو و پشت) — فقط برای اندازه‌ی ۱/۸
-
 // دو اندازه‌ی خروجی کاغذی. مقادیر «eighth» باید همیشه با
 // styles/print.css (.script-card, .print-sheet-booklet) هماهنگ بمانند.
 const SIZE_PRESETS = {
@@ -43,10 +41,11 @@ const SIZE_PRESETS = {
     padBottomMm: 4,
     fontScale: 1,
     gridClassName: "",
+    fontFamily: '"B Nazanin", Tahoma, "Vazirmatn", sans-serif',
   },
   quarter: {
     key: "quarter",
-    label: "۱/۴ برگه‌ی A4 = نصف A5 (فونت و متن درشت‌تر)",
+    label: "۱/۴ برگه‌ی A4 = نصف A5 (فونت درشت‌تر)",
     tileWMm: 148.5,
     tileHMm: 105,
     cols: 2,
@@ -54,13 +53,13 @@ const SIZE_PRESETS = {
     padXMm: 7,
     padTopMm: 10,
     padBottomMm: 6,
-    fontScale: 1.6,
+    fontScale: 1.75,
     gridClassName: "print-sheet-booklet--quarter",
+    fontFamily: '"B Titr", "B Nazanin", Tahoma, "Vazirmatn", sans-serif',
   },
 };
 
-const PRINT_FONT_PT = 16;
-const PRINT_FONT_FAMILY = '"B Nazanin", Tahoma, "Vazirmatn", sans-serif';
+const PRINT_FONT_PT = 18;
 const LINE_HEIGHT_RATIO = 1.30;
 
 const MM_TO_PX = 96 / 25.4;
@@ -134,7 +133,7 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT, preset = SIZE_PR
   measurer.style.width = `${usableWidthMm}mm`;
   measurer.style.fontSize = `${fontSizePt}pt`;
   measurer.style.lineHeight = String(LINE_HEIGHT_RATIO);
-  measurer.style.fontFamily = PRINT_FONT_FAMILY;
+  measurer.style.fontFamily = preset.fontFamily;
   measurer.style.fontWeight = "bold";
   document.body.appendChild(measurer);
 
@@ -239,75 +238,76 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT, preset = SIZE_PR
   return pages.length ? pages : [[]];
 }
 
-// جایگاه فیزیکی ثابت: جلد همیشه در خانه‌ی ۱۵ قرار می‌گیرد (پشت آن، خانه‌ی
-// ۱۶، خالی می‌ماند)، و خانه‌های ۷ و ۸ — که درست بالای ۱۵ و ۱۶ روی همان
-// برگه‌اند — همیشه خالی نگه داشته می‌شوند. متن اصلی در باقی خانه‌های
-// دست اول (۱ تا ۶ و ۹ تا ۱۴) و در صورت نیاز، در دست‌های بعدی (بدون
-// جایگاه رزرو) چیده می‌شود.
-const FIRST_SIGNATURE_CONTENT_SLOTS = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13]; // صفحات ۱-۶ و ۹-۱۴
-const COVER_SLOT = 14; // صفحه‌ی ۱۵
+// جایگاه فیزیکی جلد و خانه‌های خالی به‌صورت عمومی (برای هر تعداد ستون)
 
-function buildSignatures(script, contentChunks) {
+// می‌سازد که برای هر تعداد ستون (cols) کار کند — با همان قانونی که
+// برای اندازه‌ی ۱/۸ (cols=4) تنظیم و تست شده:
+//   - کل «ستون آخر» (چپ‌ترین، چون راست‌چین) رزرو می‌شود؛
+//   - بالای آن ستون همیشه خالی می‌ماند (هم رو، هم پشت)؛
+//   - پایین آن ستون، روی برگه = جلد، پشتِ همان خانه = خالی.
+// (کاربر تأیید کرد: جلد باید «پایین سمت چپ صفحه‌ی اول» بیفتد و پشتش
+// سفید بماند — دقیقاً همین قانون.)
+function buildFoldedSignatures(script, contentChunks, cols) {
+  const rows = 2;
+  const slotsPerFace = cols * rows;
+  const pagesPerSignature = slotsPerFace * 2;
+
+  const topLeftFrontSlot = 2 * (cols - 1);
+  const bottomLeftFrontSlot = 2 * (slotsPerFace - 1);
+  const reservedSlots = new Set([
+    topLeftFrontSlot,
+    topLeftFrontSlot + 1, // پشتِ همان خانه
+    bottomLeftFrontSlot, // اینجا جلد می‌آید (جدا مدیریت می‌شود)
+    bottomLeftFrontSlot + 1,
+  ]);
+
+  const firstSigContentSlots = [];
+  for (let s = 0; s < pagesPerSignature; s++) {
+    if (!reservedSlots.has(s)) firstSigContentSlots.push(s);
+  }
+
   const signatures = [];
 
-  const firstSig = new Array(PAGES_PER_SIGNATURE).fill(null);
-  firstSig[COVER_SLOT] = { type: "cover", script };
-  // خانه‌های ۷، ۸ (اندیس ۶،۷) و پشت جلد یعنی ۱۶ (اندیس ۱۵) عمداً خالی می‌مانند.
+  const firstSig = new Array(pagesPerSignature).fill(null);
+  firstSig[bottomLeftFrontSlot] = { type: "cover", script };
 
   let i = 0;
-  for (const slot of FIRST_SIGNATURE_CONTENT_SLOTS) {
+  for (const slot of firstSigContentSlots) {
     if (i >= contentChunks.length) break;
     firstSig[slot] = { type: "content", blocks: contentChunks[i++] };
   }
   signatures.push(firstSig);
 
   while (i < contentChunks.length) {
-    const sig = new Array(PAGES_PER_SIGNATURE).fill(null);
-    for (let slot = 0; slot < PAGES_PER_SIGNATURE && i < contentChunks.length; slot++) {
+    const sig = new Array(pagesPerSignature).fill(null);
+    for (let slot = 0; slot < pagesPerSignature && i < contentChunks.length; slot++) {
       sig[slot] = { type: "content", blocks: contentChunks[i++] };
     }
     signatures.push(sig);
   }
 
-  return signatures;
+  return { signatures, slotsPerFace };
 }
 
-// چیدمان ساده و پیاپی برای اندازه‌ی «۱/۴ A4»: بر خلاف اندازه‌ی ۱/۸
-// که برای صحافی/تازیانه‌دوزی (fold + staple) با ترتیب ویژه‌ی فرد/زوج
-// چیده می‌شود، اینجا چون قرار نیست به همان شکل تا و صحافی شود، صفحات
-// فقط به ترتیب معمول خواندن (جلد، بعد متن پشت‌سرهم) پر می‌شوند —
-// هر برگه چهار خانه (۲ ستون × ۲ ردیف). اگر بعداً لازم شد این اندازه
-// هم دقیقاً مثل ۱/۸ برای صحافی تا بخورد، باید ترتیب فرد/زوج مشابه
-// همان روش برایش هم پیاده‌سازی شود.
-function buildSequentialSheets(script, contentChunks, slotsPerSheet) {
-  const firstSheet = new Array(slotsPerSheet).fill(null);
-  firstSheet[0] = { type: "cover", script };
+function BookletCell({ page, fontSizePt, preset, rotated }) {
+  const rotateStyle = rotated ? { transform: "rotate(180deg)" } : undefined;
 
-  const sheets = [firstSheet];
-  let slot = 1;
-  let i = 0;
-  while (i < contentChunks.length) {
-    if (slot >= slotsPerSheet) {
-      sheets.push(new Array(slotsPerSheet).fill(null));
-      slot = 0;
-    }
-    sheets[sheets.length - 1][slot] = { type: "content", blocks: contentChunks[i++] };
-    slot++;
-  }
-  return sheets;
-}
-
-function BookletCell({ page, fontSizePt, preset }) {
-  if (!page) return <div className="script-card script-card-empty" />;
+  if (!page) return <div className="script-card script-card-empty" style={rotateStyle} />;
   if (page.type === "cover") {
     const { script } = page;
     return (
-      <div className="script-card script-card-cover">
-        <h4 className="script-card-title" style={{ fontSize: `${22 * preset.fontScale}pt` }}>
+      <div className="script-card script-card-cover" style={rotateStyle}>
+        <h4
+          className="script-card-title"
+          style={{ fontSize: `${22 * preset.fontScale}pt`, fontFamily: preset.fontFamily }}
+        >
           {script.title}
         </h4>
         {(script.role_name || script.topic) && (
-          <p className="cover-line" style={{ fontSize: `${16 * preset.fontScale}pt` }}>
+          <p
+            className="cover-line"
+            style={{ fontSize: `${16 * preset.fontScale}pt`, fontFamily: preset.fontFamily }}
+          >
             {script.role_name}
             {script.role_name && script.topic ? " از " : ""}
             {script.topic}
@@ -317,8 +317,11 @@ function BookletCell({ page, fontSizePt, preset }) {
     );
   }
   return (
-    <div className="script-card">
-      <div className="script-card-body" style={{ fontSize: `${fontSizePt}pt` }}>
+    <div className="script-card" style={rotateStyle}>
+      <div
+        className="script-card-body"
+        style={{ fontSize: `${fontSizePt}pt`, fontFamily: preset.fontFamily }}
+      >
         {page.blocks.map((block, i) =>
           block.type === "divider" ? (
             <hr className="script-card-divider" key={i} />
@@ -337,7 +340,7 @@ function BookletCell({ page, fontSizePt, preset }) {
   );
 }
 
-function BookletFace({ pages, breakAfter, fontSizePt, preset }) {
+function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
   const slotsPerFace = preset.cols * preset.rows;
   const cells = Array.from({ length: slotsPerFace }, (_, i) => pages[i] || null);
   return (
@@ -351,7 +354,7 @@ function BookletFace({ pages, breakAfter, fontSizePt, preset }) {
       }}
     >
       {cells.map((page, i) => (
-        <BookletCell page={page} fontSizePt={fontSizePt} preset={preset} key={i} />
+        <BookletCell page={page} fontSizePt={fontSizePt} preset={preset} rotated={rotated} key={i} />
       ))}
     </div>
   );
@@ -366,61 +369,43 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
 
   useEffect(() => {
     const contentChunks = paginateForPrint(segments, fontSizePt, preset);
-    if (preset.key === "eighth") {
-      setLayout({ mode: "signatures", data: buildSignatures(script, contentChunks) });
-    } else {
-      const slotsPerSheet = preset.cols * preset.rows;
-      setLayout({ mode: "sheets", data: buildSequentialSheets(script, contentChunks, slotsPerSheet) });
-    }
+    setLayout(buildFoldedSignatures(script, contentChunks, preset.cols));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [script, segments, fontSizePt, preset.key]);
+  }, [script, segments, fontSizePt, preset.key, preset.cols]);
 
   if (!layout) return null;
 
   const isFaceEmpty = (facePages) => facePages.every((p) => !p);
 
-  // اندازه‌ی ۱/۸: صحافی با ترتیب فرد/زوج (همان روش قبلی، دست‌نخورده).
-  if (layout.mode === "signatures") {
-    // همه‌ی روهای غیرخالی (رو و پشت هر دست برگه) را یک‌جا جمع می‌کنیم
-    // تا بدانیم کدام‌یک واقعاً «آخرین» روی چاپ‌شونده است.
-    const faces = [];
-    layout.data.forEach((sig, sIdx) => {
-      const oddPages = sig.filter((_, i) => i % 2 === 0);
-      const evenPagesRaw = sig.filter((_, i) => i % 2 === 1);
-      // برای چاپ دورو با «چرخش از لبه‌ی کوتاه» (مناسب صفحات landscape)،
-      // وقتی برگه رو برمی‌گردونید، ردیف بالا و پایین جابه‌جا می‌شن — پس
-      // باید همین جابه‌جایی رو از قبل توی روی پشت اعمال کنیم تا بعد از
-      // چرخش فیزیکی، هر خانه دقیقاً پشت همون خانه‌ی روی جلو بیفتد.
-      const evenPages = [...evenPagesRaw.slice(4, 8), ...evenPagesRaw.slice(0, 4)];
-      if (!isFaceEmpty(oddPages)) faces.push({ key: `${sIdx}-odd`, pages: oddPages });
-      if (!isFaceEmpty(evenPages)) faces.push({ key: `${sIdx}-even`, pages: evenPages });
-    });
+  // همه‌ی روهای غیرخالی (رو و پشت هر دست برگه) را یک‌جا جمع می‌کنیم تا
+  // بدانیم کدام‌یک واقعاً «آخرین» روی چاپ‌شونده است.
+  //
+  // کاغذها از بالا منگنه می‌شوند و چاپ دورو با چرخش از لبه‌ی کوتاه
+  // انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید، کل صفحه ۱۸۰ درجه
+  // می‌چرخد (نه فقط ردیف‌ها جابه‌جا می‌شوند). برای این‌که بعد از این
+  // چرخش فیزیکی، هر خانه‌ی پشت درست زیر همان خانه‌ی روی جلو بیفتد و
+  // درست (نه وارونه) خوانده شود، از قبل باید هم ترتیب خانه‌های روی
+  // پشت را کاملاً برعکس کنیم، هم خودِ محتوای هر خانه را با
+  // transform: rotate(180deg) وارونه چاپ کنیم.
+  const faces = [];
+  layout.signatures.forEach((sig, sIdx) => {
+    const oddPages = sig.filter((_, i) => i % 2 === 0);
+    const evenPagesRaw = sig.filter((_, i) => i % 2 === 1);
+    const evenPages = [...evenPagesRaw].reverse();
+    if (!isFaceEmpty(oddPages)) faces.push({ key: `${sIdx}-odd`, pages: oddPages, rotated: false });
+    if (!isFaceEmpty(evenPages)) faces.push({ key: `${sIdx}-even`, pages: evenPages, rotated: true });
+  });
 
-    return (
-      <div className="print-only">
-        {faces.map((face, i) => (
-          <BookletFace
-            pages={face.pages}
-            breakAfter={i < faces.length - 1}
-            fontSizePt={fontSizePt}
-            preset={preset}
-            key={face.key}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  // اندازه‌ی ۱/۴: چیدمان پیاپی و ساده (توضیح کامل بالای buildSequentialSheets).
   return (
     <div className="print-only">
-      {layout.data.map((sheetPages, i) => (
+      {faces.map((face, i) => (
         <BookletFace
-          pages={sheetPages}
-          breakAfter={i < layout.data.length - 1}
+          pages={face.pages}
+          breakAfter={i < faces.length - 1}
           fontSizePt={fontSizePt}
           preset={preset}
-          key={i}
+          rotated={face.rotated}
+          key={face.key}
         />
       ))}
     </div>
