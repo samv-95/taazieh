@@ -55,7 +55,7 @@ const SIZE_PRESETS = {
     padBottomMm: 6,
     fontScale: 1.75,
     gridClassName: "print-sheet-booklet--quarter",
-    fontFamily: '"B Titr", "B Nazanin", Tahoma, "Vazirmatn", sans-serif',
+    fontFamily: '"B Nazanin", Tahoma, "Vazirmatn", sans-serif',
   },
 };
 
@@ -351,6 +351,9 @@ function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
         pageBreakAfter: breakAfter ? "always" : "auto",
         "--tile-w": `${preset.tileWMm}mm`,
         "--tile-h": `${preset.tileHMm}mm`,
+        "--tile-pad-x": `${preset.padXMm}mm`,
+        "--tile-pad-top": `${preset.padTopMm}mm`,
+        "--tile-pad-bottom": `${preset.padBottomMm}mm`,
       }}
     >
       {cells.map((page, i) => (

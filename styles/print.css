@@ -65,9 +65,8 @@
 .script-card {
   width: var(--tile-w);
   height: var(--tile-h);
-  padding: 8mm 4mm 4mm;
+  padding: var(--tile-pad-top, 8mm) var(--tile-pad-x, 4mm) var(--tile-pad-bottom, 4mm);
   box-sizing: border-box;
-  border: 0.1mm solid #d4d4d4;
   overflow: hidden;
   display: flex;
   flex-direction: column;
