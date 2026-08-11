@@ -289,14 +289,12 @@ function buildFoldedSignatures(script, contentChunks, cols) {
   return { signatures, slotsPerFace };
 }
 
-function BookletCell({ page, fontSizePt, preset, rotated }) {
-  const rotateStyle = rotated ? { transform: "rotate(180deg)" } : undefined;
-
-  if (!page) return <div className="script-card script-card-empty" style={rotateStyle} />;
+function BookletCell({ page, fontSizePt, preset }) {
+  if (!page) return <div className="script-card script-card-empty" />;
   if (page.type === "cover") {
     const { script } = page;
     return (
-      <div className="script-card script-card-cover" style={rotateStyle}>
+      <div className="script-card script-card-cover">
         <h4
           className="script-card-title"
           style={{ fontSize: `${22 * preset.fontScale}pt`, fontFamily: preset.fontFamily }}
@@ -317,7 +315,7 @@ function BookletCell({ page, fontSizePt, preset, rotated }) {
     );
   }
   return (
-    <div className="script-card" style={rotateStyle}>
+    <div className="script-card">
       <div
         className="script-card-body"
         style={{ fontSize: `${fontSizePt}pt`, fontFamily: preset.fontFamily }}
@@ -340,25 +338,36 @@ function BookletCell({ page, fontSizePt, preset, rotated }) {
   );
 }
 
+// نکته‌ی مهم: چرخش ۱۸۰ درجه باید فقط یک‌بار روی کلِ صفحه اعمال شود،
+// نه جدا جدا روی هر خانه/متن. چرخوندن تک‌تکِ عناصر متنی هنگام خروجی
+// PDF در کروم باعث خراب‌شدن و قاطی‌شدن حروف فارسی می‌شد (یک باگ
+// شناخته‌شده‌ی موتور Skia/PDF کروم با متنِ چرخیده). با چرخوندن کل
+// ظرفِ صفحه به‌عنوان یک واحد، همون جابه‌جایی و وارونگی درست اتفاق
+// می‌افتد، بدون این‌که فونت خراب شود.
 function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
   const slotsPerFace = preset.cols * preset.rows;
   const cells = Array.from({ length: slotsPerFace }, (_, i) => pages[i] || null);
   return (
     <div
-      className={"print-sheet print-sheet-booklet " + preset.gridClassName}
-      dir="rtl"
-      style={{
-        pageBreakAfter: breakAfter ? "always" : "auto",
-        "--tile-w": `${preset.tileWMm}mm`,
-        "--tile-h": `${preset.tileHMm}mm`,
-        "--tile-pad-x": `${preset.padXMm}mm`,
-        "--tile-pad-top": `${preset.padTopMm}mm`,
-        "--tile-pad-bottom": `${preset.padBottomMm}mm`,
-      }}
+      className="print-sheet"
+      style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}
     >
-      {cells.map((page, i) => (
-        <BookletCell page={page} fontSizePt={fontSizePt} preset={preset} rotated={rotated} key={i} />
-      ))}
+      <div
+        className={"print-sheet-booklet " + preset.gridClassName}
+        dir="rtl"
+        style={{
+          "--tile-w": `${preset.tileWMm}mm`,
+          "--tile-h": `${preset.tileHMm}mm`,
+          "--tile-pad-x": `${preset.padXMm}mm`,
+          "--tile-pad-top": `${preset.padTopMm}mm`,
+          "--tile-pad-bottom": `${preset.padBottomMm}mm`,
+          transform: rotated ? "rotate(180deg)" : undefined,
+        }}
+      >
+        {cells.map((page, i) => (
+          <BookletCell page={page} fontSizePt={fontSizePt} preset={preset} key={i} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -382,19 +391,16 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
 
   // همه‌ی روهای غیرخالی (رو و پشت هر دست برگه) را یک‌جا جمع می‌کنیم تا
   // بدانیم کدام‌یک واقعاً «آخرین» روی چاپ‌شونده است.
-  //
   // کاغذها از بالا منگنه می‌شوند و چاپ دورو با چرخش از لبه‌ی کوتاه
   // انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید، کل صفحه ۱۸۰ درجه
-  // می‌چرخد (نه فقط ردیف‌ها جابه‌جا می‌شوند). برای این‌که بعد از این
-  // چرخش فیزیکی، هر خانه‌ی پشت درست زیر همان خانه‌ی روی جلو بیفتد و
-  // درست (نه وارونه) خوانده شود، از قبل باید هم ترتیب خانه‌های روی
-  // پشت را کاملاً برعکس کنیم، هم خودِ محتوای هر خانه را با
-  // transform: rotate(180deg) وارونه چاپ کنیم.
+  // می‌چرخد. چون رویِ پشت را با یک transform: rotate(180deg) روی کلِ
+  // صفحه (نه تک‌تک خانه‌ها) می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را
+  // درست جابه‌جا می‌کند هم متن را درست‌جهت می‌کند — پس محتوا را به
+  // همون ترتیب طبیعی صفحات زوج (بدون برعکس‌کردن دستیِ آرایه) می‌دهیم.
   const faces = [];
   layout.signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
-    const evenPagesRaw = sig.filter((_, i) => i % 2 === 1);
-    const evenPages = [...evenPagesRaw].reverse();
+    const evenPages = sig.filter((_, i) => i % 2 === 1);
     if (!isFaceEmpty(oddPages)) faces.push({ key: `${sIdx}-odd`, pages: oddPages, rotated: false });
     if (!isFaceEmpty(evenPages)) faces.push({ key: `${sIdx}-even`, pages: evenPages, rotated: true });
   });
