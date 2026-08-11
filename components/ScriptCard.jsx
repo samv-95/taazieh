@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 // ============================================================
 // نمایش برای مشترک (حالت خوانش داخل اپ)
@@ -344,14 +344,166 @@ function BookletCell({ page, fontSizePt, preset }) {
 // شناخته‌شده‌ی موتور Skia/PDF کروم با متنِ چرخیده). با چرخوندن کل
 // ظرفِ صفحه به‌عنوان یک واحد، همون جابه‌جایی و وارونگی درست اتفاق
 // می‌افتد، بدون این‌که فونت خراب شود.
+// روی پشتِ صفحه (زوج) را دیگر با transform: rotate(180deg) روی متن
+// واقعی نمی‌چرخانیم — چون این کار باعث می‌شد کروم هنگام خروجی PDF
+// حروف فارسی را قاطی/خراب چاپ کند (یک باگ تأییدشده‌ی موتور
+// Skia/PDF کروم با متنِ چرخیده، مستقل از این‌که rotate یا scale یا
+// matrix باشد). به‌جایش کل روی پشت را با Canvas به‌صورت تصویر رسم
+// می‌کنیم؛ چون این‌جا دیگر پای موتور متنِ PDF کروم وسط نمی‌آید،
+// حروف همیشه درست چاپ می‌شوند.
+const CANVAS_SCALE = 3; // برای وضوح چاپ بهتر (تقریباً معادل ۲۸۸dpi)
+const CANVAS_PT_TO_PX = (96 / 72) * CANVAS_SCALE;
+const CANVAS_MM_TO_PX = (96 / 25.4) * CANVAS_SCALE;
+
+function drawJustifiedWords(ctx, words, rightEdgePx, yPx, widthPx) {
+  if (words.length === 0) return;
+  if (words.length === 1) {
+    ctx.textAlign = "right";
+    ctx.fillText(words[0], rightEdgePx, yPx);
+    return;
+  }
+  const wordWidths = words.map((w) => ctx.measureText(w).width);
+  const totalWordsWidth = wordWidths.reduce((a, b) => a + b, 0);
+  const gapWidth = Math.max(0, (widthPx - totalWordsWidth) / (words.length - 1));
+  ctx.textAlign = "right";
+  let cursor = rightEdgePx;
+  words.forEach((word, i) => {
+    ctx.fillText(word, cursor, yPx);
+    cursor -= wordWidths[i] + gapWidth;
+  });
+}
+
+function drawCanvasCell(ctx, page, leftPx, topPx, tileWpx, tileHpx, preset, fontSizePt, dpiScale) {
+  const padX = preset.padXMm * CANVAS_MM_TO_PX;
+  const padTop = preset.padTopMm * CANVAS_MM_TO_PX;
+
+  if (!page) return; // خانه‌ی خالی: فقط پس‌زمینه‌ی سفید صفحه که از قبل رسم شده کافی است.
+
+  ctx.save();
+  ctx.fillStyle = "#fdf8f1";
+  ctx.fillRect(leftPx, topPx, tileWpx, tileHpx);
+
+  const contentLeft = leftPx + padX;
+  const contentRight = leftPx + tileWpx - padX;
+  const contentWidth = contentRight - contentLeft;
+  let y = topPx + padTop;
+
+  if (page.type === "cover") {
+    ctx.fillStyle = "#a01820";
+    ctx.font = `bold ${22 * preset.fontScale * CANVAS_PT_TO_PX}px "Lalezar", "B Nazanin", sans-serif`;
+    const titleLineHeight = 22 * preset.fontScale * CANVAS_PT_TO_PX * 1.3;
+    y += titleLineHeight * 0.8;
+    ctx.textAlign = "center";
+    ctx.fillText(page.script.title, leftPx + tileWpx / 2, y);
+    if (page.script.role_name || page.script.topic) {
+      y += titleLineHeight;
+      const line =
+        (page.script.role_name || "") +
+        (page.script.role_name && page.script.topic ? " از " : "") +
+        (page.script.topic || "");
+      ctx.font = `bold ${16 * preset.fontScale * CANVAS_PT_TO_PX}px "Lalezar", "B Nazanin", sans-serif`;
+      ctx.fillText(line, leftPx + tileWpx / 2, y);
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.fillStyle = "#241b14";
+  ctx.direction = "rtl";
+  const baseLineHeight = fontSizePt * CANVAS_PT_TO_PX * LINE_HEIGHT_RATIO;
+
+  page.blocks.forEach((block) => {
+    if (block.type === "divider") {
+      y += 3.5 * CANVAS_MM_TO_PX;
+      ctx.save();
+      ctx.strokeStyle = "#7a6360";
+      ctx.setLineDash([4 * dpiScale, 3 * dpiScale]);
+      ctx.lineWidth = 0.3 * CANVAS_MM_TO_PX;
+      ctx.beginPath();
+      ctx.moveTo(contentLeft, y);
+      ctx.lineTo(contentRight, y);
+      ctx.stroke();
+      ctx.restore();
+      y += 3.5 * CANVAS_MM_TO_PX;
+      return;
+    }
+    const linePt = block.fontSizePt || fontSizePt;
+    const lineHeight = block.fontSizePt ? linePt * CANVAS_PT_TO_PX * LINE_HEIGHT_RATIO : baseLineHeight;
+    ctx.font = `900 ${linePt * CANVAS_PT_TO_PX}px "B Nazanin", Tahoma, "Vazirmatn", sans-serif`;
+    y += lineHeight * 0.8;
+    const words = block.text.split(/\s+/).filter(Boolean);
+    drawJustifiedWords(ctx, words, contentRight, y, contentWidth);
+    y += lineHeight * 0.2;
+  });
+
+  ctx.restore();
+}
+
+function RotatedCanvasFace({ pages, fontSizePt, preset }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const sheetWmm = preset.cols * preset.tileWMm;
+    const sheetHmm = preset.rows * preset.tileHMm;
+    const wPx = Math.round(sheetWmm * CANVAS_MM_TO_PX);
+    const hPx = Math.round(sheetHmm * CANVAS_MM_TO_PX);
+    canvas.width = wPx;
+    canvas.height = hPx;
+
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, wPx, hPx);
+
+    // چرخش ۱۸۰ درجه‌ی کل صفحه دور مرکز، فقط برای رسم (نه CSS) — همان
+    // اثر transform: rotate(180deg) را می‌دهد بدون درگیرکردن موتور
+    // متنِ PDF کروم.
+    ctx.save();
+    ctx.translate(wPx / 2, hPx / 2);
+    ctx.rotate(Math.PI);
+    ctx.translate(-wPx / 2, -hPx / 2);
+
+    const tileWpx = preset.tileWMm * CANVAS_MM_TO_PX;
+    const tileHpx = preset.tileHMm * CANVAS_MM_TO_PX;
+
+    for (let i = 0; i < preset.cols * preset.rows; i++) {
+      const row = Math.floor(i / preset.cols);
+      const colFromRight = i % preset.cols; // ۰ = ستون راست‌ترین (چون RTL)
+      const leftPx = (preset.cols - 1 - colFromRight) * tileWpx;
+      const topPx = row * tileHpx;
+      drawCanvasCell(ctx, pages[i] || null, leftPx, topPx, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
+    }
+
+    ctx.restore();
+  }, [pages, fontSizePt, preset]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        display: "block",
+        width: `${preset.cols * preset.tileWMm}mm`,
+        height: `${preset.rows * preset.tileHMm}mm`,
+      }}
+    />
+  );
+}
+
 function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
   const slotsPerFace = preset.cols * preset.rows;
   const cells = Array.from({ length: slotsPerFace }, (_, i) => pages[i] || null);
+
+  if (rotated) {
+    return (
+      <div className="print-sheet" style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}>
+        <RotatedCanvasFace pages={cells} fontSizePt={fontSizePt} preset={preset} />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="print-sheet"
-      style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}
-    >
+    <div className="print-sheet" style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}>
       <div
         className={"print-sheet-booklet " + preset.gridClassName}
         dir="rtl"
@@ -361,7 +513,6 @@ function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
           "--tile-pad-x": `${preset.padXMm}mm`,
           "--tile-pad-top": `${preset.padTopMm}mm`,
           "--tile-pad-bottom": `${preset.padBottomMm}mm`,
-          transform: rotated ? "rotate(180deg)" : undefined,
         }}
       >
         {cells.map((page, i) => (
