@@ -238,33 +238,60 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT, preset = SIZE_PR
   return pages.length ? pages : [[]];
 }
 
-// جایگاه فیزیکی جلد و خانه‌های خالی به‌صورت عمومی (برای هر تعداد ستون)
-
-// می‌سازد که برای هر تعداد ستون (cols) کار کند — با همان قانونی که
-// برای اندازه‌ی ۱/۸ (cols=4) تنظیم و تست شده:
-//   - کل «ستون آخر» (چپ‌ترین، چون راست‌چین) رزرو می‌شود؛
-//   - بالای آن ستون همیشه خالی می‌ماند (هم رو، هم پشت)؛
-//   - پایین آن ستون، روی برگه = جلد، پشتِ همان خانه = خالی.
-// (کاربر تأیید کرد: جلد باید «پایین سمت چپ صفحه‌ی اول» بیفتد و پشتش
-// سفید بماند — دقیقاً همین قانون.)
+// جایگاه فیزیکی جلد و خانه‌های خالی به‌صورت عمومی (برای هر تعداد ستون).
+// دو نکته‌ی مهمی که کاربر تأیید/اصلاح کرد:
+//   ۱) پر شدن باید «رو-محور» باشد: اول همه‌ی خانه‌های روی برگه پشت‌سرهم
+//      پر شوند، بعد همه‌ی خانه‌های پشت برگه — نه فرد/زوجِ درهم (که قبلاً
+//      باعث می‌شد مثلاً صفحه‌های ۱و۳ روی برگه بیفتند و ۲و۴ پشتش، درحالی‌که
+//      باید ۱و۲ روی برگه و ۳و۴ پشتش می‌افتاد).
+//   ۲) در اندازه‌ی ۱/۴ (cols=2) فقط جلد رزرو می‌شود؛ ۳ خانه‌ی دیگر باید
+//      هم رو هم پشتشان با محتوا پر شود (نه این‌که یک خانه‌ی اضافه هم
+//      همیشه خالی بماند مثل اندازه‌ی ۱/۸).
+// در اندازه‌ی ۱/۸ (cols=4) قانون قبلی (رزرو کل ستون آخر) دست‌نخورده
+// می‌ماند چون قبلاً تأیید و تست شده بود.
 function buildFoldedSignatures(script, contentChunks, cols) {
   const rows = 2;
   const slotsPerFace = cols * rows;
   const pagesPerSignature = slotsPerFace * 2;
+  const reserveTopLeft = cols >= 4; // فقط برای ۱/۸ (یا بزرگ‌تر) این خانه‌ی اضافه رزرو می‌شود
 
   const topLeftFrontSlot = 2 * (cols - 1);
   const bottomLeftFrontSlot = 2 * (slotsPerFace - 1);
-  const reservedSlots = new Set([
-    topLeftFrontSlot,
-    topLeftFrontSlot + 1, // پشتِ همان خانه
-    bottomLeftFrontSlot, // اینجا جلد می‌آید (جدا مدیریت می‌شود)
-    bottomLeftFrontSlot + 1,
-  ]);
 
-  const firstSigContentSlots = [];
-  for (let s = 0; s < pagesPerSignature; s++) {
-    if (!reservedSlots.has(s)) firstSigContentSlots.push(s);
+  const reservedSlots = new Set([bottomLeftFrontSlot + 1]); // پشتِ جلد همیشه خالی
+  if (reserveTopLeft) {
+    reservedSlots.add(topLeftFrontSlot);
+    reservedSlots.add(topLeftFrontSlot + 1);
   }
+
+  // ترتیب پرشدن: همه‌ی خانه‌های «رو» به ترتیب موقعیت، بعد همه‌ی
+  // خانه‌های «پشت» به همان ترتیب موقعیت — جلد از این لیست جدا می‌ماند.
+  const buildFaceMajorOrder = (contentOnly) => {
+    const frontSlots = [];
+    const backSlots = [];
+    for (let p = 1; p <= slotsPerFace; p++) {
+      const frontSlot = 2 * (p - 1);
+      const backSlot = frontSlot + 1;
+      if (contentOnly && frontSlot === bottomLeftFrontSlot) {
+        // جلد جداگانه مدیریت می‌شود؛ فقط پشتش را (اگر رزرو نشده) رد می‌کنیم
+      } else if (!reservedSlots.has(frontSlot)) {
+        frontSlots.push(frontSlot);
+      }
+      if (!reservedSlots.has(backSlot)) backSlots.push(backSlot);
+    }
+    return [...frontSlots, ...backSlots];
+  };
+
+  const firstSigContentSlots = buildFaceMajorOrder(true);
+  const fullSigContentSlots = (() => {
+    const frontSlots = [];
+    const backSlots = [];
+    for (let p = 1; p <= slotsPerFace; p++) {
+      frontSlots.push(2 * (p - 1));
+      backSlots.push(2 * (p - 1) + 1);
+    }
+    return [...frontSlots, ...backSlots];
+  })();
 
   const signatures = [];
 
@@ -280,7 +307,8 @@ function buildFoldedSignatures(script, contentChunks, cols) {
 
   while (i < contentChunks.length) {
     const sig = new Array(pagesPerSignature).fill(null);
-    for (let slot = 0; slot < pagesPerSignature && i < contentChunks.length; slot++) {
+    for (const slot of fullSigContentSlots) {
+      if (i >= contentChunks.length) break;
       sig[slot] = { type: "content", blocks: contentChunks[i++] };
     }
     signatures.push(sig);
