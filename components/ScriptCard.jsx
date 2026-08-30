@@ -45,10 +45,10 @@ const SIZE_PRESETS = {
   },
   quarter: {
     key: "quarter",
-    label: "۱/۴ برگه‌ی A4 = نصف A5 (فونت درشت‌تر)",
+    label: "۱/۴ برگه‌ی A4 = A6 روی کاغذ A5 (فونت درشت‌تر)",
     tileWMm: 148.5,
     tileHMm: 105,
-    cols: 2,
+    cols: 1,
     rows: 2,
     padXMm: 7,
     padTopMm: 10,
@@ -56,6 +56,7 @@ const SIZE_PRESETS = {
     fontScale: 1.75,
     gridClassName: "print-sheet-booklet--quarter",
     fontFamily: '"B Nazanin", Tahoma, "Vazirmatn", sans-serif',
+    pageSizeMm: "148.5mm 210mm",
   },
 };
 
@@ -318,40 +319,34 @@ function buildFoldedSignatures(script, contentChunks, cols) {
 }
 
 // ------------------------------------------------------------------
-// اندازه‌ی «۱/۴ = بزرگ»: برخلاف ۱/۸ که دورو چاپ و به ۸ تکه بریده
-// می‌شود، این یکی تک‌رو چاپ می‌شود و کاغذ فقط از وسط (عمودی) به ۲
-// تکه بریده می‌شود؛ هر تکه از بالا/پایین تا می‌خورد (نه برش) تا
-// خودش تبدیل به یک برگه‌ی ۴صفحه‌ای شود. یعنی:
-//   - ستون چپ (چپ‌بالا + چپ‌پایین) با هم یک تکه‌اند و تا می‌خورند؛
-//     چپ‌پایین = جلد (صفحه‌۱)، چپ‌بالا = پشتِ جلد/خالی (صفحه‌۲).
-//   - ستون راست (راست‌بالا + راست‌پایین) تکه‌ی دیگر است؛
-//     راست‌پایین = صفحه‌۳، راست‌بالا = صفحه‌۴ — هر دو محتوا.
-//   - چون تا خوردن، نه چاپ دورو، ردیف بالا را با ۱۸۰ درجه چرخش رسم
-//     می‌کنیم تا بعد از تا خوردن (که ردیف بالا را به‌سمت پایین/پشت
-//     می‌آورد) درست‌جهت دیده شود؛ ردیف پایین دست‌نخورده می‌ماند.
-function buildQuarterFoldSheets(script, contentChunks) {
-  const toContent = (chunk) => (chunk ? { type: "content", blocks: chunk } : null);
+// اندازه‌ی «۱/۴ = بزرگ»: کاغذ A5 (یک ستون، دو ردیف: بالا+پایین)،
+// دقیقاً مثل مکانیزم دورو/چرخشِ اندازه‌ی ۱/۸ (چرخوندن کل روی پشت به
+// یک واحد)، فقط با ۱ ستون به‌جای ۴. دست اول:
+//   صفحه‌۱ (رو-بالا) = جلد. صفحه‌۴ (پشت-بالا، پشتِ جلد) = خالی.
+//   صفحه‌۲ (رو-پایین) = اولین متن، از بالای همون خانه تا پایینش —
+//     بدون چرخش. صفحه‌۳ (پشت-پایین، پشتِ صفحه‌۲) = ادامه‌ی متن، ۱۸۰
+//     درجه چرخیده (چون بعد از ورق‌زدن از لبه‌ی کوتاه، آن‌جا می‌افتد).
+// برگه‌های بعدی (بدون جلد): همون قانون برای هر ۴ خانه امتداد پیدا
+// می‌کند — رو-بالا، رو-پایین، پشت-پایین، پشت-بالا، به همین ترتیبِ خواندن.
+function buildQuarterDuplexSignatures(script, contentChunks) {
+  const signatures = [];
 
-  const sheets = [];
-  sheets.push({
-    bottomLeft: { type: "cover", script },
-    topLeft: null,
-    bottomRight: toContent(contentChunks[0]),
-    topRight: toContent(contentChunks[1]),
-  });
+  const firstSig = [{ type: "cover", script }, null, null, null];
+  let i = 0;
+  if (contentChunks[i]) firstSig[2] = { type: "content", blocks: contentChunks[i++] }; // رو-پایین
+  if (contentChunks[i]) firstSig[3] = { type: "content", blocks: contentChunks[i++] }; // پشت-پایین
+  signatures.push(firstSig);
 
-  let i = 2;
   while (i < contentChunks.length) {
-    sheets.push({
-      bottomLeft: toContent(contentChunks[i]),
-      topLeft: toContent(contentChunks[i + 1]),
-      bottomRight: toContent(contentChunks[i + 2]),
-      topRight: toContent(contentChunks[i + 3]),
-    });
-    i += 4;
+    const sig = [null, null, null, null];
+    if (contentChunks[i]) sig[0] = { type: "content", blocks: contentChunks[i++] }; // رو-بالا
+    if (contentChunks[i]) sig[2] = { type: "content", blocks: contentChunks[i++] }; // رو-پایین
+    if (contentChunks[i]) sig[3] = { type: "content", blocks: contentChunks[i++] }; // پشت-پایین
+    if (contentChunks[i]) sig[1] = { type: "content", blocks: contentChunks[i++] }; // پشت-بالا
+    signatures.push(sig);
   }
 
-  return sheets;
+  return { signatures, slotsPerFace: 2 };
 }
 
 function BookletCell({ page, fontSizePt, preset }) {
@@ -555,70 +550,6 @@ function RotatedCanvasFace({ pages, fontSizePt, preset }) {
   );
 }
 
-// یک برگه‌ی کامل حالت «بزرگ» را روی یک canvas می‌کشد: ردیف پایین
-// عادی، ردیف بالا هرکدام دور مرکز خودشان ۱۸۰ درجه چرخیده (چون بعد
-// از تا خوردنِ کاغذ، آن‌هاست که رو به پایین/پشت می‌آید).
-function QuarterFoldSheet({ sheet, fontSizePt, preset, breakAfter }) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const sheetWmm = preset.cols * preset.tileWMm;
-    const sheetHmm = preset.rows * preset.tileHMm;
-    const wPx = Math.round(sheetWmm * CANVAS_MM_TO_PX);
-    const hPx = Math.round(sheetHmm * CANVAS_MM_TO_PX);
-    canvas.width = wPx;
-    canvas.height = hPx;
-
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, wPx, hPx);
-
-    const tileWpx = preset.tileWMm * CANVAS_MM_TO_PX;
-    const tileHpx = preset.tileHMm * CANVAS_MM_TO_PX;
-
-    // ستون راست = x بزرگ‌تر (سمت راست کاغذ)، ستون چپ = x کوچک‌تر —
-    // این جهتِ فیزیکیِ کاغذ است، مستقل از راست‌چین بودنِ خودِ متن.
-    const rightColX = tileWpx;
-    const leftColX = 0;
-    const topRowY = 0;
-    const bottomRowY = tileHpx;
-
-    // ردیف پایین: بدون چرخش
-    drawCanvasCell(ctx, sheet.bottomRight, rightColX, bottomRowY, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
-    drawCanvasCell(ctx, sheet.bottomLeft, leftColX, bottomRowY, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
-
-    // ردیف بالا: هرکدام دور مرکز خودش ۱۸۰ درجه
-    const drawRotated = (page, leftPx, topPx) => {
-      if (!page) return;
-      ctx.save();
-      const cx = leftPx + tileWpx / 2;
-      const cy = topPx + tileHpx / 2;
-      ctx.translate(cx, cy);
-      ctx.rotate(Math.PI);
-      ctx.translate(-cx, -cy);
-      drawCanvasCell(ctx, page, leftPx, topPx, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
-      ctx.restore();
-    };
-    drawRotated(sheet.topRight, rightColX, topRowY);
-    drawRotated(sheet.topLeft, leftColX, topRowY);
-  }, [sheet, fontSizePt, preset]);
-
-  return (
-    <div className="print-sheet" style={{ pageBreakAfter: breakAfter ? "always" : "auto" }}>
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: "block",
-          width: `${preset.cols * preset.tileWMm}mm`,
-          height: `${preset.rows * preset.tileHMm}mm`,
-        }}
-      />
-    </div>
-  );
-}
-
 function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
   const slotsPerFace = preset.cols * preset.rows;
   const cells = Array.from({ length: slotsPerFace }, (_, i) => pages[i] || null);
@@ -642,6 +573,8 @@ function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
           "--tile-pad-x": `${preset.padXMm}mm`,
           "--tile-pad-top": `${preset.padTopMm}mm`,
           "--tile-pad-bottom": `${preset.padBottomMm}mm`,
+          "--sheet-w": `${preset.cols * preset.tileWMm}mm`,
+          "--sheet-h": `${preset.rows * preset.tileHMm}mm`,
         }}
       >
         {cells.map((page, i) => (
@@ -662,39 +595,24 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
   useEffect(() => {
     const contentChunks = paginateForPrint(segments, fontSizePt, preset);
     if (preset.key === "quarter") {
-      setLayout({ mode: "fold", sheets: buildQuarterFoldSheets(script, contentChunks) });
+      setLayout(buildQuarterDuplexSignatures(script, contentChunks));
     } else {
-      setLayout({ mode: "duplex", ...buildFoldedSignatures(script, contentChunks, preset.cols) });
+      setLayout(buildFoldedSignatures(script, contentChunks, preset.cols));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [script, segments, fontSizePt, preset.key, preset.cols]);
 
   if (!layout) return null;
 
-  if (layout.mode === "fold") {
-    return (
-      <div className="print-only">
-        {layout.sheets.map((sheet, i) => (
-          <QuarterFoldSheet
-            sheet={sheet}
-            breakAfter={i < layout.sheets.length - 1}
-            fontSizePt={fontSizePt}
-            preset={preset}
-            key={i}
-          />
-        ))}
-      </div>
-    );
-  }
-
   const isFaceEmpty = (facePages) => facePages.every((p) => !p);
 
-  // اندازه‌ی ۱/۸: چاپ دورو، کاغذها از بالا منگنه می‌شوند و چاپ دورو با
-  // چرخش از لبه‌ی کوتاه انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید،
-  // کل صفحه ۱۸۰ درجه می‌چرخد. چون روی پشت را با چرخوندن کلِ صفحه (نه
-  // تک‌تک خانه‌ها) می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را درست
-  // جابه‌جا می‌کند هم متن را درست‌جهت می‌کند — پس محتوا را به همون
-  // ترتیب طبیعی صفحات زوج می‌دهیم.
+  // کاغذها از بالا منگنه می‌شوند و چاپ دورو با چرخش از لبه‌ی کوتاه
+  // انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید، کل صفحه ۱۸۰ درجه
+  // می‌چرخد. چون روی پشت را با چرخوندن کلِ صفحه (نه تک‌تک خانه‌ها)
+  // می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را درست جابه‌جا می‌کند هم
+  // متن را درست‌جهت می‌کند — پس محتوا را به همون ترتیب طبیعی صفحات
+  // زوج می‌دهیم. این منطق برای هر دو اندازه (۱/۸ با ۴ ستون، ۱/۴ با
+  // ۱ ستون روی کاغذ A5) یکسان است.
   const faces = [];
   layout.signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
@@ -705,6 +623,7 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
 
   return (
     <div className="print-only">
+      {preset.pageSizeMm && <style>{`@media print { @page { size: ${preset.pageSizeMm}; margin: 0; } }`}</style>}
       {faces.map((face, i) => (
         <BookletFace
           pages={face.pages}

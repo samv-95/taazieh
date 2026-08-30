@@ -45,17 +45,16 @@
     grid-template-columns: repeat(4, var(--tile-w));
     grid-template-rows: repeat(2, var(--tile-h));
     gap: 0;
-    width: 297mm;
-    height: 210mm;
+    width: var(--sheet-w, 297mm);
+    height: var(--sheet-h, 210mm);
     page-break-after: always;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  /* اندازه‌ی «۱/۴ A4» (نصف A5): همون برگه‌ی A4 افقی، ولی فقط ۲ ستون
-     به‌جای ۴ (هر خانه دو برابر عریض‌تر). ردیف‌ها همچنان ۲ تا هستند. */
+  /* اندازه‌ی «۱/۴ = بزرگ»: کاغذ A5، یک ستون (بالا+پایین)، نه ۴. */
   .print-sheet-booklet--quarter {
-    grid-template-columns: repeat(2, var(--tile-w));
+    grid-template-columns: repeat(1, var(--tile-w));
   }
 }
 
