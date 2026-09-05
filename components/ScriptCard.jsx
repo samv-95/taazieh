@@ -45,18 +45,17 @@ const SIZE_PRESETS = {
   },
   quarter: {
     key: "quarter",
-    label: "۱/۴ برگه‌ی A4 = A6 روی کاغذ A5 (فونت درشت‌تر)",
+    label: "۱/۴ برگه‌ی A4 (کارت‌های بزرگ‌تر، همون منطق ۱/۸)",
     tileWMm: 148.5,
     tileHMm: 105,
-    cols: 1,
+    cols: 2,
     rows: 2,
     padXMm: 7,
     padTopMm: 10,
     padBottomMm: 6,
-    fontScale: 1.75,
+    fontScale: 1.6,
     gridClassName: "print-sheet-booklet--quarter",
     fontFamily: '"B Nazanin", Tahoma, "Vazirmatn", sans-serif',
-    pageSizeMm: "148.5mm 210mm",
   },
 };
 
@@ -239,31 +238,28 @@ function paginateForPrint(segments, fontSizePt = PRINT_FONT_PT, preset = SIZE_PR
   return pages.length ? pages : [[]];
 }
 
-// جایگاه فیزیکی جلد و خانه‌های خالی به‌صورت عمومی (برای هر تعداد ستون).
-// دو نکته‌ی مهمی که کاربر تأیید/اصلاح کرد:
-//   ۱) پر شدن باید «رو-محور» باشد: اول همه‌ی خانه‌های روی برگه پشت‌سرهم
-//      پر شوند، بعد همه‌ی خانه‌های پشت برگه — نه فرد/زوجِ درهم (که قبلاً
-//      باعث می‌شد مثلاً صفحه‌های ۱و۳ روی برگه بیفتند و ۲و۴ پشتش، درحالی‌که
-//      باید ۱و۲ روی برگه و ۳و۴ پشتش می‌افتاد).
-//   ۲) در اندازه‌ی ۱/۴ (cols=2) فقط جلد رزرو می‌شود؛ ۳ خانه‌ی دیگر باید
-//      هم رو هم پشتشان با محتوا پر شود (نه این‌که یک خانه‌ی اضافه هم
-//      همیشه خالی بماند مثل اندازه‌ی ۱/۸).
-// در اندازه‌ی ۱/۸ (cols=4) قانون قبلی (رزرو کل ستون آخر) دست‌نخورده
-// می‌ماند چون قبلاً تأیید و تست شده بود.
+// جایگاه فیزیکی جلد و خانه‌های خالی به‌صورت عمومی (برای هر تعداد ستون)
+// — کاربر تأیید کرد که حالت بزرگ باید دقیقاً همین منطقِ اثبات‌شده‌ی
+// حالت کوچیک را داشته باشد، فقط با کارت‌های بزرگ‌تر (۲ ستون به‌جای
+// ۴)، نه یک مکانیزم جدا:
+//   - ردیف‌ها همیشه ۲ تا هستند؛ آخرین ستون (چپ‌ترین، چون راست‌چین)
+//     رزرو می‌شود — خانه‌ی بالای آن ستون همیشه خالی می‌ماند، خانه‌ی
+//     پایین آن ستون در دست اول = جلد (روی برگه) و پشتش خالی.
+//   - پر شدن «رو-محور» است: اول همه‌ی خانه‌های روی برگه پشت‌سرهم پر
+//     می‌شوند، بعد همه‌ی خانه‌های پشت برگه.
 function buildFoldedSignatures(script, contentChunks, cols) {
   const rows = 2;
   const slotsPerFace = cols * rows;
   const pagesPerSignature = slotsPerFace * 2;
-  const reserveTopLeft = cols >= 4; // فقط برای ۱/۸ (یا بزرگ‌تر) این خانه‌ی اضافه رزرو می‌شود
 
   const topLeftFrontSlot = 2 * (cols - 1);
   const bottomLeftFrontSlot = 2 * (slotsPerFace - 1);
 
-  const reservedSlots = new Set([bottomLeftFrontSlot + 1]); // پشتِ جلد همیشه خالی
-  if (reserveTopLeft) {
-    reservedSlots.add(topLeftFrontSlot);
-    reservedSlots.add(topLeftFrontSlot + 1);
-  }
+  const reservedSlots = new Set([
+    bottomLeftFrontSlot + 1, // پشتِ جلد
+    topLeftFrontSlot,
+    topLeftFrontSlot + 1,
+  ]);
 
   // ترتیب پرشدن: همه‌ی خانه‌های «رو» به ترتیب موقعیت، بعد همه‌ی
   // خانه‌های «پشت» به همان ترتیب موقعیت — جلد از این لیست جدا می‌ماند.
@@ -274,7 +270,7 @@ function buildFoldedSignatures(script, contentChunks, cols) {
       const frontSlot = 2 * (p - 1);
       const backSlot = frontSlot + 1;
       if (contentOnly && frontSlot === bottomLeftFrontSlot) {
-        // جلد جداگانه مدیریت می‌شود؛ فقط پشتش را (اگر رزرو نشده) رد می‌کنیم
+        // جلد جداگانه مدیریت می‌شود
       } else if (!reservedSlots.has(frontSlot)) {
         frontSlots.push(frontSlot);
       }
@@ -316,37 +312,6 @@ function buildFoldedSignatures(script, contentChunks, cols) {
   }
 
   return { signatures, slotsPerFace };
-}
-
-// ------------------------------------------------------------------
-// اندازه‌ی «۱/۴ = بزرگ»: کاغذ A5 (یک ستون، دو ردیف: بالا+پایین)،
-// دقیقاً مثل مکانیزم دورو/چرخشِ اندازه‌ی ۱/۸ (چرخوندن کل روی پشت به
-// یک واحد)، فقط با ۱ ستون به‌جای ۴. دست اول:
-//   صفحه‌۱ (رو-بالا) = جلد. صفحه‌۴ (پشت-بالا، پشتِ جلد) = خالی.
-//   صفحه‌۲ (رو-پایین) = اولین متن، از بالای همون خانه تا پایینش —
-//     بدون چرخش. صفحه‌۳ (پشت-پایین، پشتِ صفحه‌۲) = ادامه‌ی متن، ۱۸۰
-//     درجه چرخیده (چون بعد از ورق‌زدن از لبه‌ی کوتاه، آن‌جا می‌افتد).
-// برگه‌های بعدی (بدون جلد): همون قانون برای هر ۴ خانه امتداد پیدا
-// می‌کند — رو-بالا، رو-پایین، پشت-پایین، پشت-بالا، به همین ترتیبِ خواندن.
-function buildQuarterDuplexSignatures(script, contentChunks) {
-  const signatures = [];
-
-  const firstSig = [{ type: "cover", script }, null, null, null];
-  let i = 0;
-  if (contentChunks[i]) firstSig[2] = { type: "content", blocks: contentChunks[i++] }; // رو-پایین
-  if (contentChunks[i]) firstSig[3] = { type: "content", blocks: contentChunks[i++] }; // پشت-پایین
-  signatures.push(firstSig);
-
-  while (i < contentChunks.length) {
-    const sig = [null, null, null, null];
-    if (contentChunks[i]) sig[0] = { type: "content", blocks: contentChunks[i++] }; // رو-بالا
-    if (contentChunks[i]) sig[2] = { type: "content", blocks: contentChunks[i++] }; // رو-پایین
-    if (contentChunks[i]) sig[3] = { type: "content", blocks: contentChunks[i++] }; // پشت-پایین
-    if (contentChunks[i]) sig[1] = { type: "content", blocks: contentChunks[i++] }; // پشت-بالا
-    signatures.push(sig);
-  }
-
-  return { signatures, slotsPerFace: 2 };
 }
 
 function BookletCell({ page, fontSizePt, preset }) {
@@ -586,6 +551,8 @@ function BookletFace({ pages, breakAfter, fontSizePt, preset, rotated }) {
 }
 
 // نسخه‌ی مخصوص چاپ «مجلس»: بوکلت افقی، با انتخاب اندازه (۱/۸ یا ۱/۴ A4)
+// — هر دو اندازه دقیقاً از یک منطق استفاده می‌کنند، فقط تعداد ستون‌ها
+// (و درنتیجه سایز هر کارت) فرق می‌کند.
 export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
   const [layout, setLayout] = useState(null);
   const preset = SIZE_PRESETS[sizeMode] || SIZE_PRESETS.eighth;
@@ -594,11 +561,7 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
 
   useEffect(() => {
     const contentChunks = paginateForPrint(segments, fontSizePt, preset);
-    if (preset.key === "quarter") {
-      setLayout(buildQuarterDuplexSignatures(script, contentChunks));
-    } else {
-      setLayout(buildFoldedSignatures(script, contentChunks, preset.cols));
-    }
+    setLayout(buildFoldedSignatures(script, contentChunks, preset.cols));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [script, segments, fontSizePt, preset.key, preset.cols]);
 
@@ -611,8 +574,7 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
   // می‌چرخد. چون روی پشت را با چرخوندن کلِ صفحه (نه تک‌تک خانه‌ها)
   // می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را درست جابه‌جا می‌کند هم
   // متن را درست‌جهت می‌کند — پس محتوا را به همون ترتیب طبیعی صفحات
-  // زوج می‌دهیم. این منطق برای هر دو اندازه (۱/۸ با ۴ ستون، ۱/۴ با
-  // ۱ ستون روی کاغذ A5) یکسان است.
+  // زوج می‌دهیم. این منطق برای هر دو اندازه یکسان است.
   const faces = [];
   layout.signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
@@ -623,7 +585,6 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
 
   return (
     <div className="print-only">
-      {preset.pageSizeMm && <style>{`@media print { @page { size: ${preset.pageSizeMm}; margin: 0; } }`}</style>}
       {faces.map((face, i) => (
         <BookletFace
           pages={face.pages}

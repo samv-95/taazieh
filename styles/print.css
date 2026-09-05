@@ -54,7 +54,7 @@
 
   /* اندازه‌ی «۱/۴ = بزرگ»: کاغذ A5، یک ستون (بالا+پایین)، نه ۴. */
   .print-sheet-booklet--quarter {
-    grid-template-columns: repeat(1, var(--tile-w));
+    grid-template-columns: repeat(2, var(--tile-w));
   }
 }
 
