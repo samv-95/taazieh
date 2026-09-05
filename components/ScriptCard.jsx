@@ -468,39 +468,64 @@ function RotatedCanvasFace({ pages, fontSizePt, preset }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const sheetWmm = preset.cols * preset.tileWMm;
-    const sheetHmm = preset.rows * preset.tileHMm;
-    const wPx = Math.round(sheetWmm * CANVAS_MM_TO_PX);
-    const hPx = Math.round(sheetHmm * CANVAS_MM_TO_PX);
-    canvas.width = wPx;
-    canvas.height = hPx;
+    let cancelled = false;
 
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, wPx, hPx);
+    const draw = () => {
+      const canvas = canvasRef.current;
+      if (!canvas || cancelled) return;
+      const sheetWmm = preset.cols * preset.tileWMm;
+      const sheetHmm = preset.rows * preset.tileHMm;
+      const wPx = Math.round(sheetWmm * CANVAS_MM_TO_PX);
+      const hPx = Math.round(sheetHmm * CANVAS_MM_TO_PX);
+      canvas.width = wPx;
+      canvas.height = hPx;
 
-    // چرخش ۱۸۰ درجه‌ی کل صفحه دور مرکز، فقط برای رسم (نه CSS) — همان
-    // اثر transform: rotate(180deg) را می‌دهد بدون درگیرکردن موتور
-    // متنِ PDF کروم.
-    ctx.save();
-    ctx.translate(wPx / 2, hPx / 2);
-    ctx.rotate(Math.PI);
-    ctx.translate(-wPx / 2, -hPx / 2);
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, wPx, hPx);
 
-    const tileWpx = preset.tileWMm * CANVAS_MM_TO_PX;
-    const tileHpx = preset.tileHMm * CANVAS_MM_TO_PX;
+      // چرخش ۱۸۰ درجه‌ی کل صفحه دور مرکز، فقط برای رسم (نه CSS) — همان
+      // اثر transform: rotate(180deg) را می‌دهد بدون درگیرکردن موتور
+      // متنِ PDF کروم.
+      ctx.save();
+      ctx.translate(wPx / 2, hPx / 2);
+      ctx.rotate(Math.PI);
+      ctx.translate(-wPx / 2, -hPx / 2);
 
-    for (let i = 0; i < preset.cols * preset.rows; i++) {
-      const row = Math.floor(i / preset.cols);
-      const colFromRight = i % preset.cols; // ۰ = ستون راست‌ترین (چون RTL)
-      const leftPx = (preset.cols - 1 - colFromRight) * tileWpx;
-      const topPx = row * tileHpx;
-      drawCanvasCell(ctx, pages[i] || null, leftPx, topPx, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
-    }
+      const tileWpx = preset.tileWMm * CANVAS_MM_TO_PX;
+      const tileHpx = preset.tileHMm * CANVAS_MM_TO_PX;
 
-    ctx.restore();
+      for (let i = 0; i < preset.cols * preset.rows; i++) {
+        const row = Math.floor(i / preset.cols);
+        const colFromRight = i % preset.cols; // ۰ = ستون راست‌ترین (چون RTL)
+        const leftPx = (preset.cols - 1 - colFromRight) * tileWpx;
+        const topPx = row * tileHpx;
+        drawCanvasCell(ctx, pages[i] || null, leftPx, topPx, tileWpx, tileHpx, preset, fontSizePt, CANVAS_SCALE);
+      }
+
+      ctx.restore();
+    };
+
+    // نکته‌ی حیاتی: برخلاف HTML، وقتی یک فونت (حتی فونت سیستمیِ محلی
+    // مثل B Nazanin، یا فونت وبِ Lalezar) بعد از اولین رسم آماده شود،
+    // canvas خودش دوباره رسم نمی‌کند — چیزی که همان لحظه رسم شده با
+    // فونت پیش‌فرضِ نامرتبطِ مرورگر (که برای حروف فارسی کاملاً
+    // بی‌معنی/درهم به‌نظر می‌رسد) برای همیشه همون‌جا می‌ماند. برای
+    // همین قبل از رسم، صبر می‌کنیم تا همه‌ی فونت‌های صفحه واقعاً آماده
+    // باشند.
+    const fontProbes = [
+      `bold 16px "Lalezar"`,
+      `bold 16px "B Nazanin"`,
+      `900 16px "B Nazanin"`,
+    ];
+    Promise.all([
+      document.fonts.ready,
+      ...fontProbes.map((f) => document.fonts.load(f).catch(() => {})),
+    ]).then(draw);
+
+    return () => {
+      cancelled = true;
+    };
   }, [pages, fontSizePt, preset]);
 
   return (
