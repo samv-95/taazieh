@@ -314,6 +314,33 @@ function buildFoldedSignatures(script, contentChunks, cols) {
   return { signatures, slotsPerFace };
 }
 
+// اندازه‌ی «بزرگ»: کاربر صریحاً تأیید کرد که همه‌ی صفحات تک‌رو هستند
+// — نه دورو، نه چرخش ۱۸۰ درجه، و نه هیچ خانه‌ی رزرو-خالی (که باعث
+// فاصله‌ی الکی بین دو بخش می‌شد). فقط پشت‌سرهم، راست‌به‌چپ، بالا‌به‌پایین:
+// خانه‌ی اول صفحه‌ی اول = جلد، بقیه‌ی خانه‌ها (همین صفحه و صفحات بعدی)
+// با محتوا پر می‌شوند، بدون هیچ خانه‌ی خالیِ عمدی.
+function buildSimpleSequentialPages(script, contentChunks, cols, rows) {
+  const slotsPerPage = cols * rows;
+  const pages = [];
+
+  let current = new Array(slotsPerPage).fill(null);
+  current[0] = { type: "cover", script };
+  let slotIdx = 1;
+
+  for (let i = 0; i < contentChunks.length; i++) {
+    if (slotIdx >= slotsPerPage) {
+      pages.push(current);
+      current = new Array(slotsPerPage).fill(null);
+      slotIdx = 0;
+    }
+    current[slotIdx] = { type: "content", blocks: contentChunks[i] };
+    slotIdx++;
+  }
+  pages.push(current);
+
+  return pages;
+}
+
 function BookletCell({ page, fontSizePt, preset }) {
   if (!page) return <div className="script-card script-card-empty" />;
   if (page.type === "cover") {
@@ -583,23 +610,46 @@ export function PrintBooklet({ script, segments, sizeMode = "eighth" }) {
   const preset = SIZE_PRESETS[sizeMode] || SIZE_PRESETS.eighth;
   const baseFontSizePt = Number(script?.print_font_size_pt) || PRINT_FONT_PT;
   const fontSizePt = Math.round(baseFontSizePt * preset.fontScale * 100) / 100;
+  const isSimplex = preset.key === "quarter";
 
   useEffect(() => {
     const contentChunks = paginateForPrint(segments, fontSizePt, preset);
-    setLayout(buildFoldedSignatures(script, contentChunks, preset.cols));
+    if (isSimplex) {
+      setLayout({ mode: "simplex", pages: buildSimpleSequentialPages(script, contentChunks, preset.cols, preset.rows) });
+    } else {
+      setLayout({ mode: "duplex", ...buildFoldedSignatures(script, contentChunks, preset.cols) });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [script, segments, fontSizePt, preset.key, preset.cols]);
+  }, [script, segments, fontSizePt, preset.key, preset.cols, isSimplex]);
 
   if (!layout) return null;
 
+  // اندازه‌ی «بزرگ»: تک‌رو، بدون چرخش، بدون خانه‌ی رزرو — هر صفحه با
+  // DOM معمولی (نه Canvas) رندر می‌شود، چون نیازی به چرخش نیست.
+  if (layout.mode === "simplex") {
+    return (
+      <div className="print-only">
+        {layout.pages.map((pageSlots, i) => (
+          <BookletFace
+            pages={pageSlots}
+            breakAfter={i < layout.pages.length - 1}
+            fontSizePt={fontSizePt}
+            preset={preset}
+            rotated={false}
+            key={i}
+          />
+        ))}
+      </div>
+    );
+  }
+
   const isFaceEmpty = (facePages) => facePages.every((p) => !p);
 
-  // کاغذها از بالا منگنه می‌شوند و چاپ دورو با چرخش از لبه‌ی کوتاه
-  // انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید، کل صفحه ۱۸۰ درجه
-  // می‌چرخد. چون روی پشت را با چرخوندن کلِ صفحه (نه تک‌تک خانه‌ها)
-  // می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را درست جابه‌جا می‌کند هم
-  // متن را درست‌جهت می‌کند — پس محتوا را به همون ترتیب طبیعی صفحات
-  // زوج می‌دهیم. این منطق برای هر دو اندازه یکسان است.
+  // اندازه‌ی «۱/۸»: کاغذها از بالا منگنه می‌شوند و چاپ دورو با چرخش از
+  // لبه‌ی کوتاه انجام می‌شود؛ یعنی وقتی برگه را ورق می‌زنید، کل صفحه
+  // ۱۸۰ درجه می‌چرخد. چون روی پشت را با چرخوندن کلِ صفحه (نه تک‌تک
+  // خانه‌ها) می‌چرخانیم، همین یک چرخش هم جای خانه‌ها را درست جابه‌جا
+  // می‌کند هم متن را درست‌جهت می‌کند.
   const faces = [];
   layout.signatures.forEach((sig, sIdx) => {
     const oddPages = sig.filter((_, i) => i % 2 === 0);
